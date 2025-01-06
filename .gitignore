@@ -1,0 +1,10 @@
+# Editors and IDE
+*.code-workspace
+.vscode/
+.devcontainer/
+
+# Builds
+build/
+
+
+sdkconfig.old
