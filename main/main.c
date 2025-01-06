@@ -1,18 +1,40 @@
-#include <stdio.h>
+/******************************************************************************
+ * \file main.c
+ * \brief
+ * \author Raphael CAUSSE - Melvyn MUNOZ
+ *****************************************************************************/
+
+/***** Includes **************************************************************/
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "esp_log.h"
 
-const char *TAG = "drone";
+/***** Definitions ***********************************************************/
+
+/***** Macros ****************************************************************/
+
+/***** Global Variables ******************************************************/
+
+/***** Static Variables ******************************************************/
+
+static const char *tag = "main";
+
+/***** Static Functions Prototypes *******************************************/
+
+/***** Functions *************************************************************/
 
 void app_main(void)
 {
-    const TickType_t delay = 1000 / portTICK_PERIOD_MS;
+    ESP_LOGI(tag, "Hello from ESP32-S3 !");
 
-    while (1)
+    const TickType_t delay_ticks = pdMS_TO_TICKS(1000);
+
+    for (;;)
     {
-        ESP_LOGI(TAG, "Hello world !");
-        vTaskDelay(delay);
+        ESP_LOGI(tag, "ticks since scheduler started: %lu", xTaskGetTickCount());
+        vTaskDelay(delay_ticks);
     }
 }
+
+/***** Static Functions Definitions ******************************************/
