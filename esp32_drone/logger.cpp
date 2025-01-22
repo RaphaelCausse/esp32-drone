@@ -1,5 +1,6 @@
-#include <stdarg.h>
 #include "logger.h"
+
+Logger logger;
 
 void Logger::begin(unsigned long baudRate)
 {
@@ -10,7 +11,7 @@ void Logger::begin(unsigned long baudRate)
   }
 }
 
-void Logger::info(const char* tag, const char* message, ...)
+void Logger::info(const char *tag, const char *message, ...)
 {
   va_list args;
   va_start(args, message);
@@ -18,7 +19,7 @@ void Logger::info(const char* tag, const char* message, ...)
   va_end(args);
 }
 
-void Logger::warning(const char* tag, const char* message, ...)
+void Logger::warning(const char *tag, const char *message, ...)
 {
   va_list args;
   va_start(args, message);
@@ -26,7 +27,7 @@ void Logger::warning(const char* tag, const char* message, ...)
   va_end(args);
 }
 
-void Logger::error(const char* tag, const char* message, ...)
+void Logger::error(const char *tag, const char *message, ...)
 {
   va_list args;
   va_start(args, message);
@@ -34,7 +35,7 @@ void Logger::error(const char* tag, const char* message, ...)
   va_end(args);
 }
 
-void Logger::log(const char* tag, const char* level, const char* format, va_list args)
+void Logger::log(const char *tag, const char *level, const char *format, va_list args)
 {
   Serial.print("[");
   Serial.print(tag);
