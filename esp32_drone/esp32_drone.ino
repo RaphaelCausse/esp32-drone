@@ -1,11 +1,12 @@
 #include "mpu6050.h"
 #include "vl53l0x.h"
+#include "logger.h"
 
 #define LED LED_BUILTIN
 
 void setup()
 {
-  Serial.begin(115200);
+  logger.begin();
 
   mpu6050_init();
   vl53l0x_init();
