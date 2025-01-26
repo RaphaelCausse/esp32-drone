@@ -3,6 +3,8 @@
 #include "vl53l0x.h"
 #include "logger.h"
 
+#define LED LED_BUILTIN
+
 #define I2C_SDA 8
 #define I2C_SCL 9
 
@@ -16,6 +18,11 @@ void setup()
   Wire.begin(I2C_SDA, I2C_SCL);
 
   mpu_ready = mpu6050_init();
+
+  lox_ready = vl53l0x_init();
+  
+  pinMode(LED, OUTPUT);
+  Serial.begin(115200);
 }
 
 void loop()
@@ -30,5 +37,11 @@ void loop()
     logger.warning(TAG, "Cannot read from mpu6050");
   }
 
+  delay(200);
+  
+  if(lox_ready)
+  {
+    vl53l0x_poll(); //todo : faire la led qui s'allume quand on est trop proche
+  }
   delay(200);
 }
