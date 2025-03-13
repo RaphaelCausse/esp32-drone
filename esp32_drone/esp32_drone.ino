@@ -42,6 +42,9 @@ void loop()
   if(lox_ready)
   {
     vl53l0x_poll(); //todo : faire la led qui s'allume quand on est trop proche
+    // if(vl530x.distance != null){
+    //   vl53l0x_LED(distance);
+    // }
   }
   delay(200);
 }
