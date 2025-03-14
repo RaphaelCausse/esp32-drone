@@ -1,34 +1,30 @@
+#include <Arduino.h>
 #include <Wire.h>
-#include "mpu6050.h"
-#include "vl53l0x.h"
+#include "drone.h"
 #include "logger.h"
-
-#define I2C_SDA 8
-#define I2C_SCL 9
 
 static const char *TAG = "main";
 
-bool mpu_ready = false;
+Drone drone;
 
 void setup()
 {
-  logger.begin();
-  Wire.begin(I2C_SDA, I2C_SCL);
+  /* Init Serial and logger */
+  logger.begin(LOGGER_BAUDRATE);
 
-  mpu_ready = mpu6050_init();
+  /* Init I2C */
+  if (Wire.begin(GPIO_I2C_SDA, GPIO_I2C_SCL))
+  {
+    logger.info(TAG, "Successfully initialized I2C on SDA: %d, SCL: %d", GPIO_I2C_SDA, GPIO_I2C_SCL);
+  }
+  else
+  {
+    logger.error(TAG, "Failed to initialize I2C on SDA: %d, SCL: %d", GPIO_I2C_SDA, GPIO_I2C_SCL);
+    /* TODO: Should be error state */
+  }
 }
 
 void loop()
 {
-  if (mpu_ready)
-  {
-    mpu6050_poll();
-    mpu6050_print();
-  }
-  else
-  {
-    logger.warning(TAG, "Cannot read from mpu6050");
-  }
-
-  delay(200);
+  drone.state_machine();
 }
