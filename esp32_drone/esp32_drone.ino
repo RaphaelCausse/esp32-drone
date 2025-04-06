@@ -1,7 +1,10 @@
 #include <Arduino.h>
 #include <Wire.h>
-#include "drone.h"
 #include "logger.h"
+#include "ledRGB.h"
+#include "drone.h"
+
+#define LED LED_BUILTIN
 
 static const char *TAG = "main";
 
