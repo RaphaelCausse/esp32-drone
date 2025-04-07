@@ -1,111 +1,130 @@
+#include <string>
 #include "drone.h"
 #include "logger.h"
-#include "mpu6050.h"
-#include "vl53l0x.h"
 
-static const char *TAG = "drone";
+static const char *TAG = "DRONE";
 
-Drone::Drone()
+Drone::Drone() : m_state(DroneState::INITIALIZING) {}
+
+Drone::~Drone() {}
+
+void Drone::init()
 {
-  m_state_drone = STATE_DRONE_OFF;
-  m_state_sensor_mpu = STATE_SENSOR_OFF;
-  m_state_sensor_vlx = STATE_SENSOR_OFF;
+    led_rgb_init();
+    Wire.begin(DRONE_I2C_SDA, DRONE_I2C_SCL);
+
+    /*** Initialize critical componenents ***/
+
+    if (!m_imu.init())
+    {
+        m_state = DroneState::ERROR;
+        return;
+    }
+    // TODO: initialize FlightReceiver
+
+    /*** Initialize non-critical components ***/
+
+    if (!m_tof.init())
+    {
+        m_state = DroneState::DEGRADED;
+        return;
+    }
+
+    change_state(DroneState::CALIBRATING);
 }
 
-bool Drone::init()
+void Drone::update()
 {
-  if (!sensors_init())
-  {
-    return false;
-  }
+    uint32_t current_ms = millis();
 
-  return true;
+    switch (m_state)
+    {
+    case DroneState::CALIBRATING:
+        led_rgb_blue(ON);
+        m_imu.calibrate();
+        change_state(DroneState::IDLE);
+        break;
+
+    case DroneState::IDLE:
+        led_rgb_blink(Color::WHITE, LED_BLINK_INTERVAL_IDLE, current_ms);
+        // TODO
+        break;
+
+    case DroneState::DISARMED:
+        led_rgb_blink(Color::RED, LED_BLINK_INTERVAL_DISARMED, current_ms);
+        // TODO
+        break;
+
+    case DroneState::ARMED:
+        led_rgb_blink(Color::GREEN, LED_BLINK_INTERVAL_ARMED, current_ms);
+        // TODO
+        break;
+
+    case DroneState::AUTO_TAKEOFF:
+        // TODO
+        break;
+
+    case DroneState::FLYING:
+        // TODO
+        break;
+
+    case DroneState::AUTO_LANDING:
+        // TODO
+        break;
+
+    case DroneState::EMERGENCY_LANDING:
+        // TODO
+        break;
+
+    case DroneState::DEGRADED:
+        led_rgb_yellow(ON);
+        // TODO
+        break;
+
+    case DroneState::ERROR:
+        led_rgb_blink(Color::RED, LED_BLINK_INTERVAL_ERROR, current_ms);
+        // TODO
+        break;
+
+    default:
+        break;
+    }
 }
 
-bool Drone::sensors_init()
+const char *Drone::state_to_str(DroneState state)
 {
-  uint16_t num_try = 0;
-
-  /* Try to init MPU6050 sensor */
-  do
-  {
-    if (mpu6050_init())
+    switch (state)
     {
-      m_state_sensor_mpu = STATE_SENSOR_ACTIVE;
-      logger.info(TAG, "Successfully initialized sensor mpu6050");
+    case DroneState::INITIALIZING:
+        return "INITIALIZING";
+    case DroneState::CALIBRATING:
+        return "CALIBRATING";
+    case DroneState::IDLE:
+        return "IDLE";
+    case DroneState::DISARMED:
+        return "DISARMED";
+    case DroneState::ARMED:
+        return "ARMED";
+    case DroneState::AUTO_TAKEOFF:
+        return "AUTO_TAKEOFF";
+    case DroneState::FLYING:
+        return "FLYING";
+    case DroneState::AUTO_LANDING:
+        return "AUTO_LANDING";
+    case DroneState::EMERGENCY_LANDING:
+        return "EMERGENCY_LANDING";
+    case DroneState::DEGRADED:
+        return "DEGRADED";
+    case DroneState::ERROR:
+        return "ERROR";
+    default:
+        return "UNKNOWN";
     }
-    else
-    {
-      logger.warning(TAG, "Retrying (%u) to initialize sensor mpu6050...", num_try);
-      num_try++;
-      delay(100);
-    }
-
-    if (num_try >= SENSOR_INIT_MAX_TRY)
-    {
-      m_state_sensor_mpu = STATE_SENSOR_DEAD;
-      logger.error(TAG, "Failed to initialize sensor mpu6050");
-      break;
-    }
-  } while (m_state_sensor_mpu != STATE_SENSOR_ACTIVE);
-  
-  /* Try to init VL53L0X sensor */
-  num_try = 0;
-  do
-  {
-    if (vl53l0x_init())
-    {
-      m_state_sensor_vlx = STATE_SENSOR_ACTIVE;
-      logger.info(TAG, "Successfully initialized sensor vl53l0x");
-    }
-    else
-    {
-      logger.warning(TAG, "Retrying (%u) to initialize sensor vl53l0x...", num_try);
-      num_try++;
-      delay(100);
-    }
-
-    if (num_try >= SENSOR_INIT_MAX_TRY)
-    {
-      m_state_sensor_vlx = STATE_SENSOR_DEAD;
-      logger.error(TAG, "Failed to initialize sensor vl53l0x");
-      break;
-    }
-  } while (m_state_sensor_vlx != STATE_SENSOR_ACTIVE);
-
-  return (m_state_sensor_mpu == STATE_SENSOR_ACTIVE && m_state_sensor_vlx == STATE_SENSOR_ACTIVE);
 }
 
-void Drone::state_machine()
+void Drone::change_state(DroneState new_state)
 {
-  uint16_t mpu_num_invalid = 0;
-
-  switch (m_state_drone)
-  {
-  case STATE_DRONE_OFF:
-    if (init())
-    {
-      m_state_drone = STATE_DRONE_READY;
-    }
-    break;
-
-  case STATE_DRONE_READY:
-    mpu6050_poll_accel(&m_data_mpu);
-    mpu6050_poll_gyro(&m_data_mpu);
-    mpu6050_print(&m_data_mpu);
-    if (!mpu6050_check(&m_data_mpu))
-    {
-      mpu_num_invalid++;
-    }
-    if (mpu_num_invalid >= SENSOR_POLL_MAX_INVALID)
-    {
-      mpu_num_invalid = 0;
-      mpu6050_reset();
-    }
-    break;
-
-  default:
-    break;
-  }
-  delay(200);
+    led_rgb_unset();
+    logger.info(TAG, "Change state: %s -> %s", state_to_str(m_state), state_to_str(new_state));
+    m_state = new_state;
 }
