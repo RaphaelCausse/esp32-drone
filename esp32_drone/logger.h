@@ -10,6 +10,7 @@ class Logger
 {
 public:
     void begin(unsigned long baudRate = LOGGER_BAUDRATE);
+    void debug(const char *tag, const char *message, ...);
     void info(const char *tag, const char *message, ...);
     void warning(const char *tag, const char *message, ...);
     void error(const char *tag, const char *message, ...);

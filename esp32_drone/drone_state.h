@@ -4,19 +4,18 @@
 enum class DroneState
 {
     INITIALIZING, // Initializing sensors, receiver, motors, etc.
-    CALIBRATING,  // Calibrating sensor
+    CALIBRATING,  // Calibrating sensors
 
-    IDLE,     // Drone is ready but waiting for user action
-    DISARMED, // Safety enabled, motors are off
+    IDLE,     // Drone ready, does nothing
+    DISARMED, // Safety enabled, motors are off, waiting to be armed
     ARMED,    // Safety disabled, motors are ready but not spinning yet
 
-    AUTO_TAKEOFF, // Autonomous takeoff (PID controller active)
-    FLYING,       // In-flight (manual or autonomous control)
-    AUTO_LANDING, // Autonomous landing procedure in progress
+    AUTO_TAKEOFF, // Autonomous takeoff (PID)
+    FLYING,       // In-flight (PID)
+    AUTO_LANDING, // Autonomous landing (PID)
 
-    EMERGENCY_LANDING, // Emergency: low battery, lost signal, or critical failure
-    DEGRADED,          // A non-critical component failed; flight is still possible
-    ERROR              // Critical failure; flight is not allowed
+    EMERGENCY_LANDING, // Emergency: lost signal or sensors, or critical failure
+    ERROR              // Critical failure: flight is not allowed
 };
 
 #endif /* ESP32_DRONE_DRONE_STATE_H */
