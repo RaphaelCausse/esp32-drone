@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Contrôle Drone - Joystick</title>
+  <!-- <script src="https://cdn.jsdelivr.net/npm/nipplejs@0.9.0/dist/nipplejs.min.js"></script> -->
+    <script src="nipplejs.min.js"></script>
+  <style>
+    body {
+      font-family: sans-serif;
+      text-align: center;
+      background: #f0f0f0;
+    }
+    #joystick-box {
+        display: flex;
+        justify-content: center;
+        margin: 0 auto;
+    }
+    #joystick-zone-left {
+      width: 250px;
+      height: 250px;
+      margin: 50px 50px;
+      background: #ddd;
+      border-radius: 50%;
+      position: relative;
+    }
+    #joystick-zone-right {
+        width: 250px;
+        height: 250px;
+        margin: 50px 50px;
+        background: #ddd;
+        border-radius: 50%;
+        position: relative;
+    }
+
+    #slider-box{
+      display: flex;
+      justify-content: space-between;
+      margin: 0 auto;
+      
+    }
+    #slider-box-content{
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+    }
+
+    /* The switch - the box around the slider */
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 60px;
+      height: 34px;
+    }
+
+    /* Hide default HTML checkbox */
+    .switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    /* The slider */
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: #ccc;
+      -webkit-transition: .4s;
+      transition: .4s;
+    }
+
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 26px;
+      width: 26px;
+      left: 4px;
+      bottom: 4px;
+      background-color: white;
+      -webkit-transition: .4s;
+      transition: .4s;
+    }
+
+    input:checked + .slider {
+      background-color: #2196F3;
+    }
+
+    input:focus + .slider {
+      box-shadow: 0 0 1px #2196F3;
+    }
+
+    input:checked + .slider:before {
+      -webkit-transform: translateX(26px);
+      -ms-transform: translateX(26px);
+      transform: translateX(26px);
+    }
+
+  </style>
+</head>
+<body>
+  <h1>Contrôle du Drone</h1>
+  <div id="slider-box">
+    <div class="slider-box-content">
+      <p>OFF / ON</p>
+      <label class="switch">
+        <input type="checkbox">
+        <span class="slider"></span>
+      </label>
+    </div>
+    <div class="slider-box-content">
+      <p>Mode ??/??/??</p>
+      <label class="switch">
+        <input type="checkbox">
+        <span class="slider"></span>
+      </label>
+    </div>
+  </div>
+  <div id="joystick-box">
+      <div id="joystick-zone-left"></div>
+      <div id="joystick-zone-right"></div>
+  </div>
+
+  <script>
+    const joystickZone_left = document.getElementById('joystick-zone-left');
+    const joystickZone_right = document.getElementById('joystick-zone-right');
+    const manager_left = nipplejs.create({
+      zone: joystickZone_left,
+      mode: 'static',
+      position: { left: '50%', top: '50%' },
+      color: 'blue'
+    });
+    const manager_right = nipplejs.create({
+        zone: joystickZone_right,
+        mode: 'static',
+        position: { left: '50%', top: '50%' },
+        color: 'red'
+      });
+
+    let lastSent_left = 0;
+    let lastSent_right = 0;
+
+    manager_left.on('move', function (evt, data) {
+      const now = Date.now();
+      if (now - lastSent_left < 100) return; // limiter la fréquence
+      lastSent_left = now;
+
+      if (data && data.direction) {
+        const angle_left = data.angle.degree;
+        const distance_left = data.distance;
+
+        // Construire une commande simplifiée
+        const msg_left = JSON.stringify({
+          direction: data.direction.angle,
+          speed: Math.min(Math.round(distance_left), 100)
+        });
+
+        // Envoyer via HTTP à notre serveur local
+        fetch(`/send?msg=${encodeURIComponent(msg_left)}`);
+      }
+    });
+    manager_right.on('move', function (evt, data) {
+        const now = Date.now();
+        if (now - lastSent_right < 100) return; // limiter la fréquence
+        lastSent_right = now;
+  
+        if (data && data.direction) {
+          const angle_right = data.angle.degree;
+          const distance_right = data.distance;
+  
+          // Construire une commande simplifiée
+          const msg_right = JSON.stringify({
+            direction: data.direction.angle,
+            speed: Math.min(Math.round(distance_right), 100)
+          });
+  
+          // Envoyer via HTTP à notre serveur local
+          fetch(`/send?msg=${encodeURIComponent(msg_right)}`);
+        }
+      });
+
+    manager_left.on('end', () => {
+      fetch(`/send?msg=${encodeURIComponent(JSON.stringify({direction: 'stop', speed: 0}))}`);
+    });
+    manager_right.on('end', () => {
+        fetch(`/send?msg=${encodeURIComponent(JSON.stringify({direction: 'stop', speed: 0}))}`);
+      });
+  </script>
+</body>
+</html>
