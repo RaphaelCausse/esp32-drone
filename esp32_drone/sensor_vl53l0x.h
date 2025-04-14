@@ -6,8 +6,6 @@
 #include <Adafruit_VL53L0X.h>
 #include "sensor_state.h"
 
-#define VL53L0X_INIT_RETRY (5) // Number of retry for sensor initialization
-
 class SensorVL53L0X
 {
 public:
@@ -16,6 +14,7 @@ public:
 
     bool init(TwoWire *wire = &Wire);
     void update();
+    bool check();
     bool read_distance();
 
     SensorState state() const;
@@ -27,7 +26,10 @@ private:
     SensorState m_state;
     Adafruit_VL53L0X m_vl53l0x;
 
-    float m_distance_cm;
+    float m_distance_cm; // Distance (cm)
+
+private:
+    static constexpr int VL53L0X_INIT_RETRY = 5; // Number of retry for sensor initialization
 };
 
 #endif /* ESP32_DRONE_SENSOR_VL53L0X_H */

@@ -22,8 +22,8 @@ bool SensorVL53L0X::init(TwoWire *wire)
     }
     if (retries >= VL53L0X_INIT_RETRY)
     {
-        m_state = SensorState::ERROR;
         logger.error(TAG, "Failed to initialize sensor %s", TAG);
+        m_state = SensorState::ERROR;
         return false;
     }
     logger.info(TAG, "Sensor %s detected, I2C address 0x%x", TAG, VL53L0X_I2C_ADDR);
@@ -53,6 +53,25 @@ void SensorVL53L0X::update()
     }
 }
 
+bool SensorVL53L0X::check()
+{
+    // Check sensor state before reading
+    if (m_state != SensorState::ACTIVE)
+    {
+        logger.error(TAG, "Sensor %s, is not active", TAG);
+        return false;
+    }
+
+    if (!read_distance())
+    {
+        logger.error(TAG, "Sensor %s is not responding", TAG);
+        m_state = SensorState::ERROR;
+        return false;
+    }
+
+    return true;
+}
+
 bool SensorVL53L0X::read_distance()
 {
     VL53L0X_RangingMeasurementData_t measure;
@@ -66,16 +85,18 @@ bool SensorVL53L0X::read_distance()
         }
         else
         {
-            m_distance_cm = -1.0f;
-            logger.warning(TAG, "Out of range or invalid measurement. Status: %d", measure.RangeStatus);
+            m_distance_cm = -1.0f; // Out of range or invalid reading
         }
     }
     else
     {
         m_distance_cm = -1.0f;
-        logger.error(TAG, "Failed to read distance: %d", err);
         return false;
     }
+
+    // DEBUG
+    // logger.debug(TAG, "Distance (cm): %.3f", m_distance_cm);
+    // END DEBUG
 
     return true;
 }

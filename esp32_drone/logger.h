@@ -3,20 +3,21 @@
 
 #include <Arduino.h>
 
-#define LOGGER_BAUDRATE (115200)
-#define LOGGER_BUFFER_SIZE (128)
-
 class Logger
 {
 public:
-    void begin(unsigned long baudRate = LOGGER_BAUDRATE);
+    void begin(uint32_t baudRate = LOGGER_BAUDRATE);
     void debug(const char *tag, const char *message, ...);
     void info(const char *tag, const char *message, ...);
     void warning(const char *tag, const char *message, ...);
     void error(const char *tag, const char *message, ...);
 
-protected:
+private:
     void log(const char *tag, const char *level, const char *format, va_list args);
+
+private:
+    static constexpr uint32_t LOGGER_BAUDRATE = 115200;
+    static constexpr uint32_t LOGGER_BUFFER_SIZE = 128;
 };
 
 extern Logger logger;

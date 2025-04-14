@@ -18,7 +18,7 @@ private:
     float m_kd;
     float m_integral = 0.0f;
     float m_prev_error = 0.0f;
-    unsigned long m_last_time = 0;
+    uint32_t m_last_time = 0;
 };
 
 #endif /* ESP32_DRONE_PID_CONTROLLER_H */

@@ -6,8 +6,6 @@
 #include <Adafruit_MPU6050.h>
 #include "sensor_state.h"
 
-#define MPU6050_INIT_RETRY (5) // Number of retry for sensor initialization
-
 class SensorMPU6050
 {
 public:
@@ -17,6 +15,7 @@ public:
     bool init(TwoWire *wire = &Wire);
     bool calibrate();
     void update();
+    bool check();
     bool read_gyro();
     bool read_accel();
 
@@ -41,6 +40,9 @@ private:
     float m_accel_x; // Acceleration on X axis (m/s^2)
     float m_accel_y; // Acceleration on Y axis (m/s^2)
     float m_accel_z; // Acceleration on Z axis (m/s^2)
+
+private:
+    static constexpr int MPU6050_INIT_RETRY = 5; // Number of retry for sensor initialization
 };
 
 #endif /* ESP32_DRONE_SENSOR_MPU6050_H */

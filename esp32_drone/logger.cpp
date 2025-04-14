@@ -2,7 +2,7 @@
 
 Logger logger;
 
-void Logger::begin(unsigned long baudRate)
+void Logger::begin(uint32_t baudRate)
 {
     Serial.begin(baudRate);
     while (!Serial)
