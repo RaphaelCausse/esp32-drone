@@ -177,11 +177,11 @@ void Drone::handle_state_armed(uint32_t current_ms)
     }
     // check for switch AUTO_TAKEOFF or check for throttle inputs with NEUTRAL
 
-    // Spin arm motor
+    // Spin motor when armed
     if (current_ms - m_last_pwm_update_ms >= DELAY_MS_SEND_PWM)
     {
         m_last_pwm_update_ms = current_ms;
-        m_motors.spin_idle(current_ms);
+        m_motors.spin_armed();
     }
 }
 

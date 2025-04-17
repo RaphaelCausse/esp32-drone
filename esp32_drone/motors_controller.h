@@ -12,13 +12,24 @@ public:
     bool init();
     bool setup_motor(int pin);
     void write_pwm(uint8_t motor_id, uint16_t us);
+    void init_sequence_esc();
     void stop_all();
 
-    void spin_idle(uint32_t current_ms);
+    void spin_armed();
+
+    void compute_motor_inputs(float input_throttle, float input_roll, float input_pitch, float input_yaw);
 
 private:
     void write_us_to_pin(int channel, uint16_t us);
     uint16_t constrain_us(uint16_t us, uint16_t min, uint16_t max);
+
+private:
+    uint16_t m_motor_last_pwm[4]; // Stores the last PWM value for each motor
+
+    float m_input_motor1;
+    float m_input_motor2;
+    float m_input_motor3;
+    float m_input_motor4;
 
 private:
     static constexpr uint16_t MIN_PULSE_WIDTH_US = 1000;
