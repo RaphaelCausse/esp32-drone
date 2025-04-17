@@ -6,8 +6,8 @@
 #include <ArduinoJson.h>
 #include "cmdWiFi.h"
 
-const char* ssid = "ESP32-Drone";
-const char* password = "12345678";
+const char *ssid = "ESP32-Drone";
+const char *password = "12345678";
 
 WiFiUDP udp;
 AsyncWebServer server(80);
@@ -15,11 +15,13 @@ AsyncWebServer server(80);
 struct_command currentCmd;
 struct_message currentMsg;
 
-void parseMessage(String msg, struct_message &msg_parsed) {
+void parseMessage(String msg, struct_message &msg_parsed)
+{
   StaticJsonDocument<256> doc;
 
   DeserializationError error = deserializeJson(doc, msg);
-  if (error) {
+  if (error)
+  {
     Serial.print(F("Erreur de parsing JSON : "));
     Serial.println(error.f_str());
     return;
@@ -39,38 +41,50 @@ void parseMessage(String msg, struct_message &msg_parsed) {
   msg_parsed.mode[sizeof(msg_parsed.mode) - 1] = '\0';
 }
 
-void convert_msg_to_cmd(struct_message &msg_parsed, struct_command &cmd){
-  if (strcmp(msg_parsed.mode, "auto-landing") == 0) {
+void convert_msg_to_cmd(struct_message &msg_parsed, struct_command &cmd)
+{
+  if (strcmp(msg_parsed.mode, "auto-landing") == 0)
+  {
     cmd.switch_mode = MIN;
-  } else if (strcmp(msg_parsed.mode, "neutral") == 0) {
+  }
+  else if (strcmp(msg_parsed.mode, "neutral") == 0)
+  {
     cmd.switch_mode = MIDDLE;
-  } else if (strcmp(msg_parsed.mode, "auto-take-off") == 0) {
+  }
+  else if (strcmp(msg_parsed.mode, "auto-take-off") == 0)
+  {
     cmd.switch_mode = MAX;
   }
-  
-  if (strcmp(msg_parsed.disarmedArmed, "disarmed") == 0) {
-    cmd.channel1 = MIDDLE;
-    cmd.channel2 = MIDDLE;
-    cmd.channel3 = MIN;
-    cmd.channel4 = MIDDLE;
-    cmd.switch_disarmed_armed = MIN;
+
+  if (strcmp(msg_parsed.disarmedArmed, "disarmed") == 0)
+  {
+    cmd.pitch = MIDDLE;
+    cmd.pitch = MIDDLE;
+    cmd.throttle = MIN;
+    cmd.yaw = MIDDLE;
+    cmd.switch_arm = MIN;
     return;
-  } else {
-    cmd.switch_disarmed_armed = MAX;
+  }
+  else
+  {
+    cmd.switch_arm = MAX;
   }
 
-  cmd.channel1 = msg_parsed.right_x;
-  cmd.channel2 = msg_parsed.right_y;
-  cmd.channel3 = msg_parsed.left_y;
-  cmd.channel4 = msg_parsed.left_x;
+  cmd.pitch = msg_parsed.right_x;
+  cmd.pitch = msg_parsed.right_y;
+  cmd.throttle = msg_parsed.left_y;
+  cmd.yaw = msg_parsed.left_x;
 }
 
-void cmdWiFi_init() {
+void cmdWiFi_init()
+{
   // Init LittleFS
-  if (!LittleFS.begin()) {
+  if (!LittleFS.begin())
+  {
     Serial.println("LittleFS mount failed, formatting...");
-    LittleFS.format(); //Formate la partition (supprime les fichiers actuels)
-    if (!LittleFS.begin()) {
+    LittleFS.format(); // Formate la partition (supprime les fichiers actuels)
+    if (!LittleFS.begin())
+    {
       Serial.println("Échec du format même après tentative de formatage");
       return;
     }
@@ -80,11 +94,16 @@ void cmdWiFi_init() {
   WiFi.softAP(ssid, password);
   Serial.println("WiFi en AP lancé");
 
+  // Affiche l'adresse IP pour accéder à la page web
+  Serial.print("Connectez-vous à : http://");
+  Serial.println(WiFi.softAPIP());
+
   // Serveur de fichiers
   server.serveStatic("/", LittleFS, "/").setDefaultFile("index.html");
 
   // Réception de commande
-  server.on("/send", HTTP_GET, [](AsyncWebServerRequest *request) {
+  server.on("/send", HTTP_GET, [](AsyncWebServerRequest *request)
+            {
     if (request->hasParam("msg")) {
       String msg = request->getParam("msg")->value();
       Serial.println("Commande reçue : " + msg);
@@ -102,16 +121,15 @@ void cmdWiFi_init() {
       //Convertion du message recu en commande a envoyer avec ESP-NOW
       convert_msg_to_cmd(currentMsg, currentCmd);
 
-      Serial.println(String(currentCmd.channel1));
-      Serial.println(String(currentCmd.channel2));
-      Serial.println(String(currentCmd.channel3));
-      Serial.println(String(currentCmd.channel4));
-      Serial.println(String(currentCmd.switch_disarmed_armed));
+      Serial.println(String(currentCmd.pitch));
+      Serial.println(String(currentCmd.pitch));
+      Serial.println(String(currentCmd.throttle));
+      Serial.println(String(currentCmd.yaw));
+      Serial.println(String(currentCmd.switch_arm));
       Serial.println(String(currentCmd.switch_mode));
 
     }
-    request->send(200, "text/plain", "OK");
-  });
+    request->send(200, "text/plain", "OK"); });
 
   server.begin();
   Serial.println("Serveur HTTP lancé !");

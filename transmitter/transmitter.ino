@@ -12,14 +12,14 @@ void OnDataSent(const uint8_t *mac_addr, esp_now_send_status_t status) {
 
 // ========== TACHE 1 : Communication WiFi ==========
 void TaskWiFi(void *pvParameters) {
-  cmdWiFi_init();
-  while (true) {
-    vTaskDelay(pdMS_TO_TICKS(100));
-  }
+    cmdWiFi_init();
+    while (true) {
+        vTaskDelay(pdMS_TO_TICKS(100));
+    }
 }
 
 void setup() {
-  Serial.begin(115200);
+    Serial.begin(115200);
 
     WiFi.mode(WIFI_STA);
 
@@ -39,22 +39,22 @@ void setup() {
         return;
     }
 
-  // Création des deux tâches
-  xTaskCreatePinnedToCore(
-    TaskWiFi,     // fonction
-    "WiFi Task",  // nom
-    4096,         // stack size
-    NULL,         // params
-    1,            // priorité
-    NULL,         // handle
-    1             // core 1
-  );
+    // Création des deux tâches
+    xTaskCreatePinnedToCore(
+      TaskWiFi,     // fonction
+      "WiFi Task",  // nom
+      4096,         // stack size
+      NULL,         // params
+      1,            // priorité
+      NULL,         // handle
+      1             // core 1
+    );
 }
 
 void loop() {
     esp_err_t result = esp_now_send(broadcastAddress, (uint8_t *)&currentCmd, sizeof(currentCmd));
-    if (result != ESP_OK) {
-        Serial.println("Erreur d'envoi ESP-NOW !");
-    }
+    // if (result != ESP_OK) {
+    //     Serial.println("Erreur d'envoi ESP-NOW !");
+    // }
     delay(10);
 }

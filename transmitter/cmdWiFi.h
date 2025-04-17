@@ -5,16 +5,18 @@
 #define MIDDLE (1500)
 #define MAX (2000)
 
-struct struct_command {
-  uint16_t channel1; //roll
-  uint16_t channel2; //pitch
-  uint16_t channel3; //throttle
-  uint16_t channel4; //yaw
-  uint16_t switch_disarmed_armed;
+struct struct_command
+{
+  uint16_t roll;    // roll
+  uint16_t pitch;    // pitch
+  uint16_t throttle; // throttle
+  uint16_t yaw;      // yaw
+  uint16_t switch_arm;
   uint16_t switch_mode;
 };
 
-struct struct_message {
+struct struct_message
+{
   uint16_t left_x;
   uint16_t left_y;
   uint16_t right_x;
