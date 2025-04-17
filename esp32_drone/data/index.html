@@ -1,193 +1,232 @@
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-  <meta charset="UTF-8">
-  <title>Contrôle Drone - Joystick</title>
-  <!-- <script src="https://cdn.jsdelivr.net/npm/nipplejs@0.9.0/dist/nipplejs.min.js"></script> -->
-    <script src="nipplejs.min.js"></script>
-  <style>
-    body {
-      font-family: sans-serif;
-      text-align: center;
-      background: #f0f0f0;
-    }
-    #joystick-box {
-        display: flex;
-        justify-content: center;
-        margin: 0 auto;
-    }
-    #joystick-zone-left {
-      width: 250px;
-      height: 250px;
-      margin: 50px 50px;
-      background: #ddd;
-      border-radius: 50%;
-      position: relative;
-    }
-    #joystick-zone-right {
-        width: 250px;
-        height: 250px;
-        margin: 50px 50px;
-        background: #ddd;
-        border-radius: 50%;
-        position: relative;
-    }
+<!DOCTYPE html> 
+<html lang="fr"> 
+    <head> 
+        <meta charset="UTF-8" /> 
+        <title>Contrôle Drone - Joysticks</title> 
+        <script src="nipplejs.min.js"></script> 
+        <style> 
+            body { 
+                font-family: sans-serif; 
+                text-align: center; 
+                background: #f0f0f0; 
+            } 
+            #joystick-box { 
+                display: flex; 
+                justify-content: center; 
+                margin-top: 20px; 
+            } 
+            .joystick-zone { 
+                width: 300px; 
+                height: 300px; 
+                margin: 0 30px; 
+                background: #ddd; 
+                border-radius: 50%; 
+                position: relative; 
+            }
+            #stick {
+                width: 60px;
+                height: 60px;
+                background: #0af;
+                border-radius: 50%;
+                position: absolute;
+                left: 50%;
+                top: 100%;
+                transform: translate(-50%, -100%);
+                cursor: pointer;
+            }
+            #values {
+                margin-top: 10px;
+                font-family: monospace;
+            }
+            #values-right {
+                margin-top: 10px;
+                font-family: monospace;
+            }
+            
+            .switch-toggle {
+                float: left;
+                background: #37393b;
+                margin: 10px auto;
+            }
+            .switch-toggle input {
+                position: absolute;
+                opacity: 0;
+            }
+            .switch-toggle input + label {
+                padding: 7px;
+                float: left;
+                color: #fff;
+                cursor: pointer;
+            }
+            .switch-toggle input:checked + label {
+                background: red;
+            }
 
-    #slider-box{
-      display: flex;
-      justify-content: space-between;
-      margin: 0 auto;
-      
-    }
-    #slider-box-content{
-      justify-content: center;
-      align-items: center;
-      flex-direction: column;
-    }
+            #slider-box{
+                display: flex;
+                justify-content: space-between;
+                margin: 0 auto; 
+            }
 
-    /* The switch - the box around the slider */
-    .switch {
-      position: relative;
-      display: inline-block;
-      width: 60px;
-      height: 34px;
-    }
+            #slider-box-content{
+                justify-content: center;
+                align-items: center;
+                flex-direction: column;
+            }
 
-    /* Hide default HTML checkbox */
-    .switch input {
-      opacity: 0;
-      width: 0;
-      height: 0;
-    }
+        </style> 
+    </head>
+    <body> 
+        <h1>Contrôle du Drone</h1> 
+        <div id="slider-box">
+            <div class="switch-toggle" id="switch-disarmed-armed">
+              <input id="disarmed" name="Disarmed-Armed" type="radio" checked/>
+              <label for="disarmed" onclick="">Disarmed</label>
+            
+              <input id="armed" name="Disarmed-Armed" type="radio" />
+              <label for="armed" onclick="">Armed</label>
+            </div>
+            <div class="switch-toggle" id="switch-mode">
+              <input id="auto-landing" name="mode" type="radio" />
+              <label for="auto-landing" onclick="">Auto Landing</label>
+            
+              <input id="neutral" name="mode" type="radio" checked />
+              <label for="neutral" onclick="">Neutral</label>
+            
+              <input id="auto-take-off" name="mode" type="radio" />
+              <label for="auto-take-off" onclick="">Auto Take-off</label>
+            </div>
+        </div>
+        <div id="joystick-box">
+            <div class="joystick-zone" id="joystick-zone-left"> 
+                <div id="stick"></div> 
+                <div id="values">Throttle: 1000<br>Yaw: 1500</div> 
+            </div> 
+            <div class="joystick-zone" id="joystick-zone-right">
+                <div id="values-right">
+                    Pitch (Y): 1500<br>
+                    Roll (X): 1500
+                </div> 
+            </div>
+        </div> 
+        <script> 
+            // === GESTION DU JOYSTICK GAUCHE (Custom) 
+            // bornes pour les données PWM
+            const MIN = 1000;
+            const MIDDLE = 1500;
+            const MAX = 2000;
 
-    /* The slider */
-    .slider {
-      position: absolute;
-      cursor: pointer;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background-color: #ccc;
-      -webkit-transition: .4s;
-      transition: .4s;
-    }
+            const container = document.getElementById('joystick-zone-left');
+            const stick = document.getElementById('stick');
+            const values = document.getElementById('values');
+            const radius = container.offsetWidth / 2; 
+            const maxRange = radius - stick.offsetWidth / 2; 
+            const centerX = radius; 
+            const centerY = radius; 
+            let isDragging = false; 
 
-    .slider:before {
-      position: absolute;
-      content: "";
-      height: 26px;
-      width: 26px;
-      left: 4px;
-      bottom: 4px;
-      background-color: white;
-      -webkit-transition: .4s;
-      transition: .4s;
-    }
+            let left_x = MIDDLE;
+            let left_y = MIN;
+            let right_x = MIDDLE;
+            let right_y = MIDDLE;
 
-    input:checked + .slider {
-      background-color: #2196F3;
-    }
+            function clamp(val, min, max) { 
+                return Math.max(min, Math.min(max, val));
+            } 
+            
+            function getCheckedInput(switchId) { 
+                const checked = document.querySelector(`#${switchId} input:checked`);
+                return checked ? checked.id : null;
+            } 
 
-    input:focus + .slider {
-      box-shadow: 0 0 1px #2196F3;
-    }
+            function sendJoystick() { 
+                const input_disarmed_armed = getCheckedInput("switch-disarmed-armed"); 
+                const input_mode = getCheckedInput("switch-mode"); 
+                const msg = JSON.stringify({direction: { roll: right_x, pitch: right_y, throttle: left_y, yaw: left_x}, disarmedArmed: input_disarmed_armed, mode: input_mode }); 
+                console.log(msg);
+                fetch(`/send?msg=${encodeURIComponent(msg)}`); 
+            } 
+            
+            function updateStick(x, y) { 
+                const dx = x - centerX; 
+                const dy = y - centerY; 
+                const dist = Math.sqrt(dx * dx + dy * dy); 
+                const angle = Math.atan2(dy, dx); 
+                const clampedDist = Math.min(dist, maxRange); 
+                const newX = centerX + clampedDist * Math.cos(angle); 
+                const newY = centerY + clampedDist * Math.sin(angle); 
+                
+                stick.style.left = `${newX}px`; 
+                stick.style.top = `${newY}px`; 
+                
+                const normX = (newX - centerX) / maxRange;  // entre -1 et 1
+                const normY = (newY - centerY) / maxRange;
+                left_x = clamp(Math.round(normX * 500 + MIDDLE), MIN, MAX);
+                left_y = clamp(Math.round(-normY * 500 + MIDDLE), MIN, MAX);
+                values.innerHTML = `Throttle: ${left_y}<br>Yaw: ${left_x}`; 
+                sendJoystick();
+            } 
+            
+            function resetStickLeft() { 
+                stick.style.left = `${centerX}px`;
+                
+                // met au centre l'axe horizontal
+                // garde position vertical
 
-    input:checked + .slider:before {
-      -webkit-transform: translateX(26px);
-      -ms-transform: translateX(26px);
-      transform: translateX(26px);
-    }
+                left_x = MIDDLE;
+                values.innerHTML = `Throttle: ${left_y}<br>Yaw: ${left_x}`; 
+                sendJoystick(); 
+            } 
+            
+            stick.addEventListener("mousedown", () => isDragging = true); 
+            document.addEventListener("mouseup", () => { 
+                if (isDragging) { 
+                    isDragging = false; 
+                    resetStickLeft(); 
+                } 
+            });
+             
+            document.addEventListener("mousemove", (e) => { 
+                if (!isDragging) return; 
+                const rect = container.getBoundingClientRect(); 
+                updateStick(e.clientX - rect.left, e.clientY - rect.top);
+            }); 
+            
+            stick.addEventListener("touchstart", e => { isDragging = true; e.preventDefault(); }, { passive: false }); 
+            document.addEventListener("touchend", () => { if (isDragging) { isDragging = false; resetStickLeft(); } }); 
+            document.addEventListener("touchmove", e => { 
+                if (!isDragging) return; 
+                const rect = container.getBoundingClientRect(); 
+                const touch = e.touches[0]; 
+                updateStick(touch.clientX - rect.left, touch.clientY - rect.top);
+            }, { passive: false }); 
+            
+            // Position initiale 
+            stick.style.left = `${centerX}px`;
+            stick.style.top = `${centerY + maxRange}px`; 
+            sendJoystick(); 
 
-  </style>
-</head>
-<body>
-  <h1>Contrôle du Drone</h1>
-  <div id="slider-box">
-    <div class="slider-box-content">
-      <p>OFF / ON</p>
-      <label class="switch">
-        <input type="checkbox">
-        <span class="slider"></span>
-      </label>
-    </div>
-    <div class="slider-box-content">
-      <p>Mode ??/??/??</p>
-      <label class="switch">
-        <input type="checkbox">
-        <span class="slider"></span>
-      </label>
-    </div>
-  </div>
-  <div id="joystick-box">
-      <div id="joystick-zone-left"></div>
-      <div id="joystick-zone-right"></div>
-  </div>
-
-  <script>
-    const joystickZone_left = document.getElementById('joystick-zone-left');
-    const joystickZone_right = document.getElementById('joystick-zone-right');
-    const manager_left = nipplejs.create({
-      zone: joystickZone_left,
-      mode: 'static',
-      position: { left: '50%', top: '50%' },
-      color: 'blue'
-    });
-    const manager_right = nipplejs.create({
-        zone: joystickZone_right,
-        mode: 'static',
-        position: { left: '50%', top: '50%' },
-        color: 'red'
-      });
-
-    let lastSent_left = 0;
-    let lastSent_right = 0;
-
-    manager_left.on('move', function (evt, data) {
-      const now = Date.now();
-      if (now - lastSent_left < 100) return; // limiter la fréquence
-      lastSent_left = now;
-
-      if (data && data.direction) {
-        const angle_left = data.angle.degree;
-        const distance_left = data.distance;
-
-        // Construire une commande simplifiée
-        const msg_left = JSON.stringify({
-          direction: data.direction.angle,
-          speed: Math.min(Math.round(distance_left), 100)
-        });
-
-        // Envoyer via HTTP à notre serveur local
-        fetch(`/send?msg=${encodeURIComponent(msg_left)}`);
-      }
-    });
-    manager_right.on('move', function (evt, data) {
-        const now = Date.now();
-        if (now - lastSent_right < 100) return; // limiter la fréquence
-        lastSent_right = now;
-  
-        if (data && data.direction) {
-          const angle_right = data.angle.degree;
-          const distance_right = data.distance;
-  
-          // Construire une commande simplifiée
-          const msg_right = JSON.stringify({
-            direction: data.direction.angle,
-            speed: Math.min(Math.round(distance_right), 100)
-          });
-  
-          // Envoyer via HTTP à notre serveur local
-          fetch(`/send?msg=${encodeURIComponent(msg_right)}`);
-        }
-      });
-
-    manager_left.on('end', () => {
-      fetch(`/send?msg=${encodeURIComponent(JSON.stringify({direction: 'stop', speed: 0}))}`);
-    });
-    manager_right.on('end', () => {
-        fetch(`/send?msg=${encodeURIComponent(JSON.stringify({direction: 'stop', speed: 0}))}`);
-      });
-  </script>
-</body>
+            // === GESTION DU JOYSTICK DROIT (nippleJS) 
+            const manager_right = nipplejs.create({ zone: document.getElementById('joystick-zone-right'), mode: 'static', position: { left: '50%', top: '50%' }, color: 'red' }); 
+            let lastSent_right = 0;
+            const valuesRight = document.getElementById("values-right");
+               
+            manager_right.on('move', function (evt, data) { 
+                const now = Date.now(); 
+                if (now - lastSent_right < 10) return; 
+                lastSent_right = now; 
+                right_x = clamp(Math.round(((data.vector.x || 0) * 500) + MIDDLE), MIN, MAX);
+                right_y = clamp(Math.round(((data.vector.y || 0) * 500) + MIDDLE), MIN, MAX); 
+                valuesRight.innerHTML = `Pitch (Y): ${right_y}<br>Roll (X): ${right_x}`;
+                sendJoystick(); 
+            });
+            
+            manager_right.on('end', () => { 
+                valuesRight.innerHTML = `Pitch (Y): ${MIDDLE}<br>Roll (X): ${MIDDLE}`;
+                right_x = MIDDLE;
+                right_y = MIDDLE; 
+                sendJoystick(); 
+            }); 
+        </script> 
+    </body> 
 </html>
