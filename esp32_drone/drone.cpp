@@ -31,11 +31,11 @@ void Drone::init()
         return;
     }
 
-    // if (!m_flight_receiver.init())
-    // {
-    //     change_state(DroneState::ERROR);
-    //     return;
-    // }
+    if (!m_flight_receiver.init())
+    {
+        change_state(DroneState::ERROR);
+        return;
+    }
 
     if (!m_motors.init())
     {
@@ -55,6 +55,7 @@ void Drone::init()
 
     // Atfer initialization, calibration required
     change_state(DroneState::CALIBRATING);
+
 }
 
 void Drone::update()
@@ -116,7 +117,7 @@ void Drone::handle_state_calibrating(uint32_t current_ms)
         change_state(DroneState::ERROR);
     }
 
-    change_state(DroneState::ARMED);
+    change_state(DroneState::DISARMED);
 }
 
 void Drone::handle_state_idle(uint32_t current_ms)
@@ -146,7 +147,6 @@ void Drone::handle_state_disarmed(uint32_t current_ms)
     }
 
     // Check for FlightReceiver switches
-    m_flight_receiver.update();
     if (m_flight_receiver.is_armed())
     {
         change_state(DroneState::ARMED);
@@ -170,7 +170,6 @@ void Drone::handle_state_armed(uint32_t current_ms)
     }
 
     // Check for FlightReceiver switches
-    m_flight_receiver.update();
     if (m_flight_receiver.is_disarmed())
     {
         change_state(DroneState::DISARMED);

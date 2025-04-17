@@ -119,6 +119,8 @@
             const container = document.getElementById('joystick-zone-left');
             const stick = document.getElementById('stick');
             const values = document.getElementById('values');
+            const switch_arm = document.getElementById('switch-disarmed-armed');
+            const switch_mode = document.getElementById('switch-mode');
             const radius = container.offsetWidth / 2; 
             const maxRange = radius - stick.offsetWidth / 2; 
             const centerX = radius; 
@@ -146,7 +148,7 @@
                 console.log(msg);
                 fetch(`/send?msg=${encodeURIComponent(msg)}`); 
             } 
-            
+
             function updateStick(x, y) { 
                 const dx = x - centerX; 
                 const dy = y - centerY; 
@@ -227,6 +229,16 @@
                 right_y = MIDDLE; 
                 sendJoystick(); 
             }); 
+
+            //envoi des changements de modes quand les switchs sont touches
+            switch_arm.addEventListener('change', (e) => {
+                sendJoystick();
+            });
+
+            switch_mode.addEventListener('change', (e) => {
+                sendJoystick();
+            });
+
         </script> 
     </body> 
 </html>

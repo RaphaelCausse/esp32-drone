@@ -1,61 +1,60 @@
 #include <esp_now.h>
 #include <WiFi.h>
-
 #include "cmdWiFi.h"
 
-// RECEIVER MAC Address
-//carte 2 (test)
-uint8_t broadcastAddress[] = {0xd8, 0x3b, 0xda, 0xa3, 0x71, 0xec};
-//carte 3 (drone)
-//uint8_t broadcastAddress[] = {0xd8, 0x3b, 0xda, 0xa3, 0x7b, 0xfc};
-
+uint8_t broadcastAddress[] = {0xd8, 0x3b, 0xda, 0xa3, 0x7b, 0xfc};
 esp_now_peer_info_t peerInfo;
 
-// callback appelee quand des donnees sont envoyees
+// ========== CALLBACK POUR L'ENVOI ==========
 void OnDataSent(const uint8_t *mac_addr, esp_now_send_status_t status) {
-  Serial.print("\r\nLast Packet Send Status:\t");
-  Serial.println(status == ESP_NOW_SEND_SUCCESS ? "Delivery Success" : "Delivery Fail");
+  // Optionnel
 }
- 
+
+// ========== TACHE 1 : Communication WiFi ==========
+void TaskWiFi(void *pvParameters) {
+  cmdWiFi_init();
+  while (true) {
+    vTaskDelay(pdMS_TO_TICKS(100));
+  }
+}
+
 void setup() {
   Serial.begin(115200);
- 
-  //Wi-Fi Station
-  WiFi.mode(WIFI_STA);
 
-  // Init ESP-NOW
-  if (esp_now_init() != ESP_OK) {
-    Serial.println("Error initializing ESP-NOW");
-    return;
-  }
+    WiFi.mode(WIFI_STA);
 
-  // recupere le status des packets transmis
-  esp_now_register_send_cb(OnDataSent);
-  
-  // registre peer
-  memcpy(peerInfo.peer_addr, broadcastAddress, 6);
-  peerInfo.channel = 0;  
-  peerInfo.encrypt = false;
-  
-  // Ajout peer        
-  if (esp_now_add_peer(&peerInfo) != ESP_OK){
-    Serial.println("Failed to add peer");
-    return;
-  }
+    if (esp_now_init() != ESP_OK) {
+        Serial.println("Erreur d'initialisation ESP-NOW");
+        return;
+    }
 
-  cmdWiFi_init();
+    esp_now_register_send_cb(OnDataSent);
+
+    memcpy(peerInfo.peer_addr, broadcastAddress, 6);
+    peerInfo.channel = 0;  
+    peerInfo.encrypt = false;
+
+    if (esp_now_add_peer(&peerInfo) != ESP_OK) {
+        Serial.println("Impossible d'ajouter le peer ESP-NOW");
+        return;
+    }
+
+  // Création des deux tâches
+  xTaskCreatePinnedToCore(
+    TaskWiFi,     // fonction
+    "WiFi Task",  // nom
+    4096,         // stack size
+    NULL,         // params
+    1,            // priorité
+    NULL,         // handle
+    1             // core 1
+  );
 }
- 
-void loop() {  
-  // Send message via ESP-NOW
-  esp_err_t result = esp_now_send(broadcastAddress, (uint8_t *) &currentCmd, sizeof(currentCmd));
 
-  if (result == ESP_OK) {
-    Serial.println("Sent with success");
-  }
-  else {
-    Serial.println("Error sending the data");
-  }
-   
-  delay(10);
+void loop() {
+    esp_err_t result = esp_now_send(broadcastAddress, (uint8_t *)&currentCmd, sizeof(currentCmd));
+    if (result != ESP_OK) {
+        Serial.println("Erreur d'envoi ESP-NOW !");
+    }
+    delay(10);
 }

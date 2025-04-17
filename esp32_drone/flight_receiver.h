@@ -2,6 +2,16 @@
 #define ESP32_DRONE_FLIGHT_RECEIVER_H
 
 #include <Arduino.h>
+#include <esp_now.h>
+
+struct struct_command {
+  uint16_t channel1; //roll
+  uint16_t channel2; //pitch
+  uint16_t channel3; //throttle
+  uint16_t channel4; //yaw
+  uint16_t switch_disarmed_armed;
+  uint16_t switch_mode;
+};
 
 class FlightReceiver
 {
@@ -9,8 +19,7 @@ public:
     FlightReceiver();
     ~FlightReceiver();
 
-    void init();
-    void update();
+    bool init();
 
     float throttle() const;
     float target_roll_rate() const;
@@ -18,7 +27,9 @@ public:
     float target_yaw_rate() const;
     bool is_armed() const;
     bool is_disarmed() const;
-    // TODO is_mode ...
+    bool is_neutral() const;
+    bool is_auto_landing() const;
+    bool is_auto_take_off() const;
 
 private:
     uint16_t m_received_values[6];
