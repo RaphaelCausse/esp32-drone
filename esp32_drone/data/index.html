@@ -1,0 +1,244 @@
+<!DOCTYPE html> 
+<html lang="fr"> 
+    <head> 
+        <meta charset="UTF-8" /> 
+        <title>Contrôle Drone - Joysticks</title> 
+        <script src="nipplejs.min.js"></script> 
+        <style> 
+            body { 
+                font-family: sans-serif; 
+                text-align: center; 
+                background: #f0f0f0; 
+            } 
+            #joystick-box { 
+                display: flex; 
+                justify-content: center; 
+                margin-top: 20px; 
+            } 
+            .joystick-zone { 
+                width: 300px; 
+                height: 300px; 
+                margin: 0 30px; 
+                background: #ddd; 
+                border-radius: 50%; 
+                position: relative; 
+            }
+            #stick {
+                width: 60px;
+                height: 60px;
+                background: #0af;
+                border-radius: 50%;
+                position: absolute;
+                left: 50%;
+                top: 100%;
+                transform: translate(-50%, -100%);
+                cursor: pointer;
+            }
+            #values {
+                margin-top: 10px;
+                font-family: monospace;
+            }
+            #values-right {
+                margin-top: 10px;
+                font-family: monospace;
+            }
+            
+            .switch-toggle {
+                float: left;
+                background: #37393b;
+                margin: 10px auto;
+            }
+            .switch-toggle input {
+                position: absolute;
+                opacity: 0;
+            }
+            .switch-toggle input + label {
+                padding: 7px;
+                float: left;
+                color: #fff;
+                cursor: pointer;
+            }
+            .switch-toggle input:checked + label {
+                background: red;
+            }
+
+            #slider-box{
+                display: flex;
+                justify-content: space-between;
+                margin: 0 auto; 
+            }
+
+            #slider-box-content{
+                justify-content: center;
+                align-items: center;
+                flex-direction: column;
+            }
+
+        </style> 
+    </head>
+    <body> 
+        <h1>Contrôle du Drone</h1> 
+        <div id="slider-box">
+            <div class="switch-toggle" id="switch-disarmed-armed">
+              <input id="disarmed" name="Disarmed-Armed" type="radio" checked/>
+              <label for="disarmed" onclick="">Disarmed</label>
+            
+              <input id="armed" name="Disarmed-Armed" type="radio" />
+              <label for="armed" onclick="">Armed</label>
+            </div>
+            <div class="switch-toggle" id="switch-mode">
+              <input id="auto-landing" name="mode" type="radio" />
+              <label for="auto-landing" onclick="">Auto Landing</label>
+            
+              <input id="neutral" name="mode" type="radio" checked />
+              <label for="neutral" onclick="">Neutral</label>
+            
+              <input id="auto-take-off" name="mode" type="radio" />
+              <label for="auto-take-off" onclick="">Auto Take-off</label>
+            </div>
+        </div>
+        <div id="joystick-box">
+            <div class="joystick-zone" id="joystick-zone-left"> 
+                <div id="stick"></div> 
+                <div id="values">Throttle: 1000<br>Yaw: 1500</div> 
+            </div> 
+            <div class="joystick-zone" id="joystick-zone-right">
+                <div id="values-right">
+                    Pitch (Y): 1500<br>
+                    Roll (X): 1500
+                </div> 
+            </div>
+        </div> 
+        <script> 
+            // === GESTION DU JOYSTICK GAUCHE (Custom) 
+            // bornes pour les données PWM
+            const MIN = 1000;
+            const MIDDLE = 1500;
+            const MAX = 2000;
+
+            const container = document.getElementById('joystick-zone-left');
+            const stick = document.getElementById('stick');
+            const values = document.getElementById('values');
+            const switch_arm = document.getElementById('switch-disarmed-armed');
+            const switch_mode = document.getElementById('switch-mode');
+            const radius = container.offsetWidth / 2; 
+            const maxRange = radius - stick.offsetWidth / 2; 
+            const centerX = radius; 
+            const centerY = radius; 
+            let isDragging = false; 
+
+            let left_x = MIDDLE;
+            let left_y = MIN;
+            let right_x = MIDDLE;
+            let right_y = MIDDLE;
+
+            function clamp(val, min, max) { 
+                return Math.max(min, Math.min(max, val));
+            } 
+            
+            function getCheckedInput(switchId) { 
+                const checked = document.querySelector(`#${switchId} input:checked`);
+                return checked ? checked.id : null;
+            } 
+
+            function sendJoystick() { 
+                const input_disarmed_armed = getCheckedInput("switch-disarmed-armed"); 
+                const input_mode = getCheckedInput("switch-mode"); 
+                const msg = JSON.stringify({direction: { roll: right_x, pitch: right_y, throttle: left_y, yaw: left_x}, disarmedArmed: input_disarmed_armed, mode: input_mode }); 
+                console.log(msg);
+                fetch(`/send?msg=${encodeURIComponent(msg)}`); 
+            } 
+
+            function updateStick(x, y) { 
+                const dx = x - centerX; 
+                const dy = y - centerY; 
+                const dist = Math.sqrt(dx * dx + dy * dy); 
+                const angle = Math.atan2(dy, dx); 
+                const clampedDist = Math.min(dist, maxRange); 
+                const newX = centerX + clampedDist * Math.cos(angle); 
+                const newY = centerY + clampedDist * Math.sin(angle); 
+                
+                stick.style.left = `${newX}px`; 
+                stick.style.top = `${newY}px`; 
+                
+                const normX = (newX - centerX) / maxRange;  // entre -1 et 1
+                const normY = (newY - centerY) / maxRange;
+                left_x = clamp(Math.round(normX * 500 + MIDDLE), MIN, MAX);
+                left_y = clamp(Math.round(-normY * 500 + MIDDLE), MIN, MAX);
+                values.innerHTML = `Throttle: ${left_y}<br>Yaw: ${left_x}`; 
+                sendJoystick();
+            } 
+            
+            function resetStickLeft() { 
+                stick.style.left = `${centerX}px`;
+                
+                // met au centre l'axe horizontal
+                // garde position vertical
+
+                left_x = MIDDLE;
+                values.innerHTML = `Throttle: ${left_y}<br>Yaw: ${left_x}`; 
+                sendJoystick(); 
+            } 
+            
+            stick.addEventListener("mousedown", () => isDragging = true); 
+            document.addEventListener("mouseup", () => { 
+                if (isDragging) { 
+                    isDragging = false; 
+                    resetStickLeft(); 
+                } 
+            });
+             
+            document.addEventListener("mousemove", (e) => { 
+                if (!isDragging) return; 
+                const rect = container.getBoundingClientRect(); 
+                updateStick(e.clientX - rect.left, e.clientY - rect.top);
+            }); 
+            
+            stick.addEventListener("touchstart", e => { isDragging = true; e.preventDefault(); }, { passive: false }); 
+            document.addEventListener("touchend", () => { if (isDragging) { isDragging = false; resetStickLeft(); } }); 
+            document.addEventListener("touchmove", e => { 
+                if (!isDragging) return; 
+                const rect = container.getBoundingClientRect(); 
+                const touch = e.touches[0]; 
+                updateStick(touch.clientX - rect.left, touch.clientY - rect.top);
+            }, { passive: false }); 
+            
+            // Position initiale 
+            stick.style.left = `${centerX}px`;
+            stick.style.top = `${centerY + maxRange}px`; 
+            sendJoystick(); 
+
+            // === GESTION DU JOYSTICK DROIT (nippleJS) 
+            const manager_right = nipplejs.create({ zone: document.getElementById('joystick-zone-right'), mode: 'static', position: { left: '50%', top: '50%' }, color: 'red' }); 
+            let lastSent_right = 0;
+            const valuesRight = document.getElementById("values-right");
+               
+            manager_right.on('move', function (evt, data) { 
+                const now = Date.now(); 
+                if (now - lastSent_right < 10) return; 
+                lastSent_right = now; 
+                right_x = clamp(Math.round(((data.vector.x || 0) * 500) + MIDDLE), MIN, MAX);
+                right_y = clamp(Math.round(((data.vector.y || 0) * 500) + MIDDLE), MIN, MAX); 
+                valuesRight.innerHTML = `Pitch (Y): ${right_y}<br>Roll (X): ${right_x}`;
+                sendJoystick(); 
+            });
+            
+            manager_right.on('end', () => { 
+                valuesRight.innerHTML = `Pitch (Y): ${MIDDLE}<br>Roll (X): ${MIDDLE}`;
+                right_x = MIDDLE;
+                right_y = MIDDLE; 
+                sendJoystick(); 
+            }); 
+
+            //envoi des changements de modes quand les switchs sont touches
+            switch_arm.addEventListener('change', (e) => {
+                sendJoystick();
+            });
+
+            switch_mode.addEventListener('change', (e) => {
+                sendJoystick();
+            });
+
+        </script> 
+    </body> 
+</html>
