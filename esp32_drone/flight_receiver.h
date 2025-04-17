@@ -17,9 +17,8 @@ public:
     float target_pitch_rate() const;
     float target_yaw_rate() const;
     bool is_armed() const;
-
-private:
-    float compute_target_rotation_rate(uint16_t value); // °/s
+    bool is_disarmed() const;
+    // TODO is_mode ...
 
 private:
     uint16_t m_received_values[6];
@@ -31,6 +30,9 @@ private:
     static constexpr int IDX_YAW = 3;
     static constexpr int IDX_ARM = 4;
     static constexpr int IDX_MODE = 5;
+
+    static constexpr uint16_t RECEIVE_VALUE_MAX = 2000;
+    static constexpr uint16_t RECEIVE_VALUE_MIN = 1000;
 
     static constexpr float COEF_ROTATION_RATE = 0.15;
     static constexpr uint16_t LINEAR_CORRELATION = 1500;

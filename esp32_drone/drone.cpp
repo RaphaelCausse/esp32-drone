@@ -115,10 +115,8 @@ void Drone::handle_state_calibrating(uint32_t current_ms)
     {
         change_state(DroneState::ERROR);
     }
-    else
-    {
-        change_state(DroneState::DISARMED);
-    }
+
+    change_state(DroneState::ARMED);
 }
 
 void Drone::handle_state_idle(uint32_t current_ms)
@@ -126,16 +124,12 @@ void Drone::handle_state_idle(uint32_t current_ms)
     led_rgb_white(ON);
 
     delay(DELAY_MS_IDLE);
+    // change_state(DroneState::DISARMED);
     change_state(DroneState::DISARMED);
 }
 
 void Drone::handle_state_disarmed(uint32_t current_ms)
 {
-    // TODO: check sensors
-    //       update FlightReceiver
-    //       state --> ARMED when arm switch is up, for safety
-    //       state --> ERROR if error occurs or emergency flag is up
-
     led_rgb_red(ON);
 
     if (m_emergency_protocol_engaged)
@@ -144,19 +138,18 @@ void Drone::handle_state_disarmed(uint32_t current_ms)
         return;
     }
 
+    // Check sensors health
     if (!check_sensors())
     {
         change_state(DroneState::ERROR);
         return;
     }
 
-    // update flightreceiver, check for switch ARMED
-
-    // Idle spin motor
-    if (current_ms - m_last_pwm_update_ms >= DELAY_MS_SEND_PWM)
+    // Check for FlightReceiver switches
+    m_flight_receiver.update();
+    if (m_flight_receiver.is_armed())
     {
-        m_last_pwm_update_ms = current_ms;
-        m_motors.spin_idle(current_ms);
+        change_state(DroneState::ARMED);
     }
 }
 
@@ -176,15 +169,20 @@ void Drone::handle_state_armed(uint32_t current_ms)
         return;
     }
 
-    // Check for switch DISARMED
-    // Update flightreceiver, check for switch AUTO_TAKEOFF or check for throttle inputs with NEUTRAL
+    // Check for FlightReceiver switches
+    m_flight_receiver.update();
+    if (m_flight_receiver.is_disarmed())
+    {
+        change_state(DroneState::DISARMED);
+    }
+    // check for switch AUTO_TAKEOFF or check for throttle inputs with NEUTRAL
 
-    // // Idle spin motor
-    // if (current_ms - m_last_pwm_update_ms >= DELAY_MS_SEND_PWM)
-    // {
-    //     m_last_pwm_update_ms = current_ms;
-    //     m_motors.spin_idle(current_ms);
-    // }
+    // Spin arm motor
+    if (current_ms - m_last_pwm_update_ms >= DELAY_MS_SEND_PWM)
+    {
+        m_last_pwm_update_ms = current_ms;
+        m_motors.spin_idle(current_ms);
+    }
 }
 
 void Drone::handle_state_auto_takeoff(uint32_t current_ms)
@@ -271,9 +269,9 @@ bool Drone::check_sensors()
 void Drone::stabilize_drone()
 {
     // Stabilize using PID controllers for roll, pitch, and yaw
-    m_roll_command = m_pid_roll.compute(m_imu.roll(), 0.0f);
-    m_pitch_command = m_pid_pitch.compute(m_imu.pitch(), 0.0f);
-    m_yaw_command = m_pid_yaw.compute(m_imu.yaw(), 0.0f);
+    // m_roll_command = m_pid_roll.compute(m_imu.roll(), 0.0f);
+    // m_pitch_command = m_pid_pitch.compute(m_imu.pitch(), 0.0f);
+    // m_yaw_command = m_pid_yaw.compute(m_imu.yaw(), 0.0f);
 }
 
 const char *Drone::state_to_cstr(DroneState state)

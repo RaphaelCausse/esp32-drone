@@ -23,25 +23,25 @@ float FlightReceiver::throttle() const
 
 float FlightReceiver::target_roll_rate() const
 {
-    return compute_target_rotation_rate(m_received_values[IDX_ROLL]);
+    return (float)(COEF_ROTATION_RATE * (float)(m_received_values[IDX_ROLL] - LINEAR_CORRELATION));
 }
 
 float FlightReceiver::target_pitch_rate() const
 {
-    return compute_target_rotation_rate(m_received_values[IDX_PITCH]);
+    return (float)(COEF_ROTATION_RATE * (float)(m_received_values[IDX_PITCH] - LINEAR_CORRELATION));
 }
 
 float FlightReceiver::target_yaw_rate() const
 {
-    return compute_target_rotation_rate(m_received_values[IDX_YAW]);
+    return (float)(COEF_ROTATION_RATE * (float)(m_received_values[IDX_YAW] - LINEAR_CORRELATION));
 }
 
 bool FlightReceiver::is_armed() const
 {
-    return (m_received_values[IDX_ARM] == 2000);
+    return (m_received_values[IDX_ARM] == RECEIVE_VALUE_MAX);
 }
 
-float FlightReceiver::compute_target_rotation_rate(uint16_t value)
+bool FlightReceiver::is_disarmed() const
 {
-    return (float)(COEF_ROTATION_RATE * (float)(value - LINEAR_CORRELATION));
+    return (m_received_values[IDX_ARM] == RECEIVE_VALUE_MIN);
 }
