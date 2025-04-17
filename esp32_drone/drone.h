@@ -6,7 +6,7 @@
 #include "drone_state.h"
 #include "sensor_mpu6050.h"
 #include "sensor_vl53l0x.h"
-// #include "flight_receiver.h"
+#include "flight_receiver.h"
 #include "motors_controller.h"
 #include "pid_controller.h"
 #include "led_rgb.h"
@@ -21,15 +21,15 @@ public:
     void update();
 
 private:
-    void handle_state_calibrating();
-    void handle_state_idle();
-    void handle_state_disarmed();
-    void handle_state_armed();
-    void handle_state_auto_takeoff();
-    void handle_state_flying();
-    void handle_state_auto_landing();
-    void handle_state_emergency_landing();
-    void handle_state_error();
+    void handle_state_calibrating(uint32_t current_ms);
+    void handle_state_idle(uint32_t current_ms);
+    void handle_state_disarmed(uint32_t current_ms);
+    void handle_state_armed(uint32_t current_ms);
+    void handle_state_auto_takeoff(uint32_t current_ms);
+    void handle_state_flying(uint32_t current_ms);
+    void handle_state_auto_landing(uint32_t current_ms);
+    void handle_state_emergency_landing(uint32_t current_ms);
+    void handle_state_error(uint32_t current_ms);
 
     bool check_sensors();
     void stabilize_drone();
@@ -40,12 +40,13 @@ private:
 private:
     DroneState m_state;
     bool m_emergency_protocol_engaged = false;
-    uint32_t m_last_time_sensors_checked = 0;
+    uint32_t m_last_sensors_checked_ms = 0;
+    uint32_t m_last_pwm_update_ms = 0;
 
     SensorMPU6050 m_imu; // Inertial Measurement Unit Sensor
     SensorVL53L0X m_tof; // Time Of Flight Distance Sensor
 
-    // FlightReceiver m_flight_receiver;
+    FlightReceiver m_flight_receiver; // Flight receiver using ESPNOW
 
     MotorsController m_motors; // Motors controller, PWM
 
@@ -62,18 +63,19 @@ private:
 
     static constexpr uint16_t DELAY_MS_IDLE = 500;
     static constexpr uint16_t DELAY_MS_CHECK_SENSORS = 500; // Delay in milliseconds for sensors check
+    static constexpr uint16_t DELAY_MS_SEND_PWM = 20;       // Delay in milliseconds for sending PWM signals to motors
 
-    static constexpr float PID_GAIN_P_ROLL = 1.0f;  // Proportional gain for roll (reacts to current roll error)
-    static constexpr float PID_GAIN_I_ROLL = 0.1f;  // Integral gain for roll (accumulates past roll error)
-    static constexpr float PID_GAIN_D_ROLL = 0.01f; // Derivative gain for roll (reacts to rate of change in roll error)
+    static constexpr float PID_GAIN_P_ROLL = 0.6f;  // Proportional gain for roll (reacts to current roll error)
+    static constexpr float PID_GAIN_I_ROLL = 3.5f;  // Integral gain for roll (accumulates past roll error)
+    static constexpr float PID_GAIN_D_ROLL = 0.03f; // Derivative gain for roll (reacts to rate of change in roll error)
 
-    static constexpr float PID_GAIN_P_PITCH = 1.0f;  // Proportional gain for pitch (reacts to current pitch error)
-    static constexpr float PID_GAIN_I_PITCH = 0.1f;  // Integral gain for pitch (accumulates past pitch error)
-    static constexpr float PID_GAIN_D_PITCH = 0.01f; // Derivative gain for pitch (reacts to rate of change in pitch error)
+    static constexpr float PID_GAIN_P_PITCH = 0.6f;  // Proportional gain for pitch (reacts to current pitch error)
+    static constexpr float PID_GAIN_I_PITCH = 3.5f;  // Integral gain for pitch (accumulates past pitch error)
+    static constexpr float PID_GAIN_D_PITCH = 0.03f; // Derivative gain for pitch (reacts to rate of change in pitch error)
 
-    static constexpr float PID_GAIN_P_YAW = 1.0f;  // Proportional gain for yaw (reacts to current yaw error)
-    static constexpr float PID_GAIN_I_YAW = 0.1f;  // Integral gain for yaw (accumulates past yaw error)
-    static constexpr float PID_GAIN_D_YAW = 0.01f; // Derivative gain for yaw (reacts to rate of change in yaw error)
+    static constexpr float PID_GAIN_P_YAW = 2.0f;  // Proportional gain for yaw (reacts to current yaw error)
+    static constexpr float PID_GAIN_I_YAW = 12.0f; // Integral gain for yaw (accumulates past yaw error)
+    static constexpr float PID_GAIN_D_YAW = 0.0f;  // Derivative gain for yaw (reacts to rate of change in yaw error)
 };
 
 #endif /* ESP32_DRONE_DRONE_H */

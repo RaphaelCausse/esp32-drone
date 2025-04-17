@@ -27,10 +27,36 @@ float PIDController::compute(float current, float target)
     {
         dt = 0.01f;
     }
-    m_integral += error * dt;
-    float derivative = (error - m_prev_error) / dt;
 
+    m_integral += error * dt;
+
+    // Avoid Integral windup
+    m_integral = clamp(m_integral, -INTEGRAL_WINDUP_VALUE, INTEGRAL_WINDUP_VALUE);
+
+    float derivative = (error - m_prev_error) / dt;
     m_prev_error = error;
 
-    return (m_kp * error + m_ki * m_integral + m_kd * derivative);
+    float output = m_kp * error + m_ki * m_integral + m_kd * derivative;
+    output = clamp(output, -INTEGRAL_WINDUP_VALUE, INTEGRAL_WINDUP_VALUE);
+
+    return output;
+}
+
+void PIDController::reset()
+{
+    m_integral = 0.0f;
+    m_prev_error = 0.0f;
+}
+
+float PIDController::clamp(float value, float min, float max)
+{
+    if (value > max)
+    {
+        return max;
+    }
+    if (value < min)
+    {
+        return min;
+    }
+    return value;
 }

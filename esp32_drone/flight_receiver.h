@@ -2,11 +2,6 @@
 #define ESP32_DRONE_FLIGHT_RECEIVER_H
 
 #include <Arduino.h>
-// #include <IBusBM.h> // Compilation errors
-#include <HardwareSerial.h>
-
-#define IBUS_UART_RX (6) // GPIO pin for UART RX
-#define IBUS_UART_TX (7) // GPIO pin for UART TX
 
 class FlightReceiver
 {
@@ -14,11 +9,31 @@ public:
     FlightReceiver();
     ~FlightReceiver();
 
-    void init(int uart_rx = IBUS_UART_RX, int uart_tx = IBUS_UART_TX);
+    void init();
     void update();
 
+    float throttle() const;
+    float target_roll_rate() const;
+    float target_pitch_rate() const;
+    float target_yaw_rate() const;
+    bool is_armed() const;
+
 private:
-    // IBusBM m_ibus;
+    float compute_target_rotation_rate(uint16_t value); // °/s
+
+private:
+    uint16_t m_received_values[6];
+
+private:
+    static constexpr int IDX_ROLL = 0;
+    static constexpr int IDX_PITCH = 1;
+    static constexpr int IDX_THROTTLE = 2;
+    static constexpr int IDX_YAW = 3;
+    static constexpr int IDX_ARM = 4;
+    static constexpr int IDX_MODE = 5;
+
+    static constexpr float COEF_ROTATION_RATE = 0.15;
+    static constexpr uint16_t LINEAR_CORRELATION = 1500;
 };
 
 #endif /* ESP32_DRONE_FLIGHT_RECEIVER_H */

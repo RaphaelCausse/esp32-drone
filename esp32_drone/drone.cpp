@@ -4,6 +4,8 @@
 static const char *TAG = "DRONE";
 
 Drone::Drone() : m_state(DroneState::INITIALIZING),
+                 m_imu(), m_tof(),
+                 m_motors(),
                  m_pid_roll(), m_pid_pitch(), m_pid_yaw() {}
 
 Drone::~Drone() {}
@@ -15,6 +17,7 @@ void Drone::init()
     /*** Initialize componenents ***/
 
     led_rgb_init();
+    led_rgb_white(ON);
 
     if (!m_imu.init(&Wire))
     {
@@ -34,8 +37,11 @@ void Drone::init()
     //     return;
     // }
 
-    // m_motors.init();
-    // TODO: ESC sequence --> send 1000µs pwm for setup
+    if (!m_motors.init())
+    {
+        change_state(DroneState::ERROR);
+        return;
+    }
 
     // Initialize PID controllers
     m_pid_roll.init(PID_GAIN_P_ROLL, PID_GAIN_I_ROLL, PID_GAIN_D_ROLL);
@@ -44,7 +50,8 @@ void Drone::init()
 
     // Reset flags and variables
     m_emergency_protocol_engaged = false;
-    m_last_time_sensors_checked = 0;
+    m_last_sensors_checked_ms = 0;
+    m_last_pwm_update_ms = 0;
 
     // Atfer initialization, calibration required
     change_state(DroneState::CALIBRATING);
@@ -59,39 +66,39 @@ void Drone::update()
     switch (m_state)
     {
     case DroneState::CALIBRATING:
-        handle_state_calibrating();
+        handle_state_calibrating(current_ms);
         break;
 
     case DroneState::IDLE:
-        handle_state_idle();
+        handle_state_idle(current_ms);
         break;
 
     case DroneState::DISARMED:
-        handle_state_disarmed();
+        handle_state_disarmed(current_ms);
         break;
 
     case DroneState::ARMED:
-        handle_state_armed();
+        handle_state_armed(current_ms);
         break;
 
     case DroneState::AUTO_TAKEOFF:
-        handle_state_auto_takeoff();
+        handle_state_auto_takeoff(current_ms);
         break;
 
     case DroneState::FLYING:
-        handle_state_flying();
+        handle_state_flying(current_ms);
         break;
 
     case DroneState::AUTO_LANDING:
-        handle_state_auto_landing();
+        handle_state_auto_landing(current_ms);
         break;
 
     case DroneState::EMERGENCY_LANDING:
-        handle_state_emergency_landing();
+        handle_state_emergency_landing(current_ms);
         break;
 
     case DroneState::ERROR:
-        handle_state_error();
+        handle_state_error(current_ms);
         break;
 
     default:
@@ -99,10 +106,11 @@ void Drone::update()
     }
 }
 
-void Drone::handle_state_calibrating()
+void Drone::handle_state_calibrating(uint32_t current_ms)
 {
     led_rgb_blue(ON);
 
+    // IMU calibration
     if (!m_imu.calibrate())
     {
         change_state(DroneState::ERROR);
@@ -113,7 +121,7 @@ void Drone::handle_state_calibrating()
     }
 }
 
-void Drone::handle_state_idle()
+void Drone::handle_state_idle(uint32_t current_ms)
 {
     led_rgb_white(ON);
 
@@ -121,7 +129,7 @@ void Drone::handle_state_idle()
     change_state(DroneState::DISARMED);
 }
 
-void Drone::handle_state_disarmed()
+void Drone::handle_state_disarmed(uint32_t current_ms)
 {
     // TODO: check sensors
     //       update FlightReceiver
@@ -133,19 +141,26 @@ void Drone::handle_state_disarmed()
     if (m_emergency_protocol_engaged)
     {
         change_state(DroneState::ERROR);
-        break;
+        return;
     }
 
     if (!check_sensors())
     {
         change_state(DroneState::ERROR);
-        break;
+        return;
     }
 
     // update flightreceiver, check for switch ARMED
+
+    // Idle spin motor
+    if (current_ms - m_last_pwm_update_ms >= DELAY_MS_SEND_PWM)
+    {
+        m_last_pwm_update_ms = current_ms;
+        m_motors.spin_idle(current_ms);
+    }
 }
 
-void Drone::handle_state_armed()
+void Drone::handle_state_armed(uint32_t current_ms)
 {
     // TODO: check sensors
     //       update FlightReceiver
@@ -158,14 +173,21 @@ void Drone::handle_state_armed()
     if (!check_sensors())
     {
         change_state(DroneState::ERROR);
-        break;
+        return;
     }
 
+    // Check for switch DISARMED
     // Update flightreceiver, check for switch AUTO_TAKEOFF or check for throttle inputs with NEUTRAL
-    // Spin lightly all 4 motors (5%~10%)
+
+    // // Idle spin motor
+    // if (current_ms - m_last_pwm_update_ms >= DELAY_MS_SEND_PWM)
+    // {
+    //     m_last_pwm_update_ms = current_ms;
+    //     m_motors.spin_idle(current_ms);
+    // }
 }
 
-void Drone::handle_state_auto_takeoff()
+void Drone::handle_state_auto_takeoff(uint32_t current_ms)
 {
     // TODO: update IMU readings
     //       Stabilize with PID
@@ -180,7 +202,7 @@ void Drone::handle_state_auto_takeoff()
     // stabilize_drone();
 }
 
-void Drone::handle_state_flying()
+void Drone::handle_state_flying(uint32_t current_ms)
 {
     // TODO: update IMU readings
     //       update FlightReceiver
@@ -192,21 +214,28 @@ void Drone::handle_state_flying()
     m_imu.update();
 }
 
-void Drone::handle_state_auto_landing()
+void Drone::handle_state_auto_landing(uint32_t current_ms)
 {
     // TODO: update IMU readings
     //       Stabilize with PID
     //       Descend slowly
     //       state --> DISARMED when reached ground (threshold in cm), for safety
 
-    led_rgb_blink(Color::PURPLE, LED_BLINK_INTERVAL_AUTO, current_ms);
+    if (m_emergency_protocol_engaged)
+    {
+        led_rgb_blink(Color::YELLOW, LED_BLINK_INTERVAL_AUTO, current_ms);
+    }
+    else
+    {
+        led_rgb_blink(Color::PURPLE, LED_BLINK_INTERVAL_AUTO, current_ms);
+    }
 
     m_imu.update();
     m_tof.update();
     // stabilize_drone();
 }
 
-void Drone::handle_state_emergency_landing()
+void Drone::handle_state_emergency_landing(uint32_t current_ms)
 {
     led_rgb_yellow(ON);
 
@@ -215,7 +244,7 @@ void Drone::handle_state_emergency_landing()
     change_state(DroneState::AUTO_LANDING);
 }
 
-void Drone::handle_state_error()
+void Drone::handle_state_error(uint32_t current_ms)
 {
     led_rgb_blink(Color::RED, LED_BLINK_INTERVAL_ERROR, current_ms);
 
@@ -225,9 +254,9 @@ void Drone::handle_state_error()
 bool Drone::check_sensors()
 {
     // Delay check to not run every at every iteration
-    if (millis() - m_last_time_sensors_checked >= DELAY_MS_CHECK_SENSORS)
+    if (millis() - m_last_sensors_checked_ms >= DELAY_MS_CHECK_SENSORS)
     {
-        m_last_time_sensors_checked = millis();
+        m_last_sensors_checked_ms = millis();
 
         if (!m_imu.check() || !m_tof.check())
         {
@@ -242,9 +271,9 @@ bool Drone::check_sensors()
 void Drone::stabilize_drone()
 {
     // Stabilize using PID controllers for roll, pitch, and yaw
-    float roll_command = m_pid_roll.compute(m_imu.roll(), 0.0f);
-    float pitch_command = m_pid_pitch.compute(m_imu.pitch(), 0.0f);
-    float yaw_command = m_pid_yaw.compute(m_imu.yaw(), 0.0f);
+    m_roll_command = m_pid_roll.compute(m_imu.roll(), 0.0f);
+    m_pitch_command = m_pid_pitch.compute(m_imu.pitch(), 0.0f);
+    m_yaw_command = m_pid_yaw.compute(m_imu.yaw(), 0.0f);
 }
 
 const char *Drone::state_to_cstr(DroneState state)

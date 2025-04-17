@@ -2,18 +2,46 @@
 
 static const char *TAG = "FLIGHT_RCVR";
 
-HardwareSerial IBUS_SERIAL(2);
-
 FlightReceiver::FlightReceiver() {}
 
 FlightReceiver::~FlightReceiver() {}
 
-void FlightReceiver::init(int uart_rx, int uart_tx)
+void FlightReceiver::init()
 {
-    IBUS_SERIAL.begin(115200, SERIAL_8N1, uart_rx, uart_tx);
-    // m_ibus.begin(IBUS_SERIAL);
+    // ESPNOW
 }
 
 void FlightReceiver::update()
 {
+    // READ values in m_received_values convert to float
+}
+
+float FlightReceiver::throttle() const
+{
+    return (float)m_received_values[IDX_THROTTLE];
+}
+
+float FlightReceiver::target_roll_rate() const
+{
+    return compute_target_rotation_rate(m_received_values[IDX_ROLL]);
+}
+
+float FlightReceiver::target_pitch_rate() const
+{
+    return compute_target_rotation_rate(m_received_values[IDX_PITCH]);
+}
+
+float FlightReceiver::target_yaw_rate() const
+{
+    return compute_target_rotation_rate(m_received_values[IDX_YAW]);
+}
+
+bool FlightReceiver::is_armed() const
+{
+    return (m_received_values[IDX_ARM] == 2000);
+}
+
+float FlightReceiver::compute_target_rotation_rate(uint16_t value)
+{
+    return (float)(COEF_ROTATION_RATE * (float)(value - LINEAR_CORRELATION));
 }

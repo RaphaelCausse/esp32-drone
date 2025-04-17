@@ -1,4 +1,5 @@
 #include <Adafruit_Sensor.h>
+#include <cmath>
 #include "sensor_mpu6050.h"
 #include "logger.h"
 
@@ -138,13 +139,13 @@ bool SensorMPU6050::read_gyro()
         return false;
     }
 
-    // Apply calibration
-    m_roll = g.gyro.x - m_roll_calibration;
-    m_pitch = g.gyro.y - m_pitch_calibration;
-    m_yaw = g.gyro.z - m_yaw_calibration;
+    // Apply calibration and convert from rad/s to °/s
+    m_roll_rate = (g.gyro.x - m_roll_calibration) * (180.0f / M_PI);
+    m_pitch_rate = (g.gyro.y - m_pitch_calibration) * (180.0f / M_PI);
+    m_yaw_rate = (g.gyro.z - m_yaw_calibration) * (180.0f / M_PI);
 
     // DEBUG
-    logger.debug(TAG, "Gyro (rad/s)\t| Roll: %.3f\t| Pitch: %.3f\t| Yaw: %.3f", m_roll, m_pitch, m_yaw);
+    logger.debug(TAG, "Gyro (rad/s)\t| Roll: %.3f\t| Pitch: %.3f\t| Yaw: %.3f", m_roll_rate, m_pitch_rate, m_yaw_rate);
     // END DEBUG
 
     return true;
@@ -177,8 +178,8 @@ SensorState SensorMPU6050::state() const { return m_state; }
 
 bool SensorMPU6050::is_active() const { return m_state == SensorState::ACTIVE; }
 
-float SensorMPU6050::roll() const { return m_roll; }
+float SensorMPU6050::roll() const { return m_roll_rate; }
 
-float SensorMPU6050::pitch() const { return m_pitch; }
+float SensorMPU6050::pitch() const { return m_pitch_rate; }
 
-float SensorMPU6050::yaw() const { return m_yaw; }
+float SensorMPU6050::yaw() const { return m_yaw_rate; }
