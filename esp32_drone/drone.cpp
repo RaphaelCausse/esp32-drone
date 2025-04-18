@@ -180,7 +180,6 @@ void Drone::handle_state_armed(uint32_t current_ms)
             if (m_flight_receiver.target_throttle() > (float)MotorsController::PULSE_WIDTH_US_SPIN_ARMED)
             {
                 change_state(DroneState::FLYING);
-                return;
             }
         }
 
@@ -199,7 +198,7 @@ void Drone::handle_state_auto_takeoff(uint32_t current_ms)
 {
     led_rgb_blink(Color::PURPLE, LED_BLINK_INTERVAL_NORMAL, current_ms);
 
-    if (!check_sensors() || m_flight_receiver.is_disarmed())
+    if (m_flight_receiver.is_disarmed() || !check_sensors())
     {
         change_state(DroneState::EMERGENCY_LANDING);
         return;
@@ -215,12 +214,8 @@ void Drone::handle_state_auto_takeoff(uint32_t current_ms)
 
         if (m_flight_receiver.is_neutral())
         {
-            // Manual flying
-            if (m_flight_receiver.target_throttle() > (float)MotorsController::PULSE_WIDTH_US_SPIN_HALF)
-            {
-                change_state(DroneState::FLYING);
-                return;
-            }
+            change_state(DroneState::FLYING);
+            return;
         }
 
         // Auto Takeoff logic
@@ -230,6 +225,7 @@ void Drone::handle_state_auto_takeoff(uint32_t current_ms)
             float roll_measured = m_imu.roll();
             float pitch_measured = m_imu.pitch();
             float yaw_measured = m_imu.yaw();
+            logger.debug(TAG, "roll: %.2f \t| pitch: %.2f \t| yaw: %.2f", roll_measured, pitch_measured, yaw_measured);
 
             m_tof.update();
             m_current_altitude = m_tof.distance_cm();
@@ -256,12 +252,6 @@ void Drone::handle_state_auto_takeoff(uint32_t current_ms)
             float pitch_correction = m_pid_pitch.compute(pitch_measured, 0.0f);
             float yaw_correction = m_pid_yaw.compute(yaw_measured, 0.0f);
 
-            // Always keep minimum idle spin speed
-            if (m_current_throttle < (float)MotorsController::PULSE_WIDTH_US_SPIN_IDLE)
-            {
-                m_current_throttle = (float)MotorsController::PULSE_WIDTH_US_SPIN_IDLE;
-            }
-
             // Compute and send motors inputs
             m_motors.compute_motor_inputs(m_current_throttle, roll_correction, pitch_correction, yaw_correction);
             current_ms = millis();
@@ -276,28 +266,11 @@ void Drone::handle_state_auto_takeoff(uint32_t current_ms)
 
 void Drone::handle_state_flying(uint32_t current_ms)
 {
-    led_rgb_green(ON);
+    led_rgb_blink(Color::GREEN, LED_BLINK_INTERVAL_NORMAL, current_ms);
 
-    if (!check_sensors())
+    if (m_flight_receiver.is_disarmed() || !check_sensors())
     {
         change_state(DroneState::EMERGENCY_LANDING);
-        return;
-    }
-
-    m_tof.update();
-    m_current_altitude = m_tof.distance_cm();
-    logger.debug(TAG, "Altitude: %.2f cm", m_current_altitude);
-
-    // If altitude below threshold, drone reached ground
-    if (m_flight_receiver.is_disarmed() &&
-        (m_current_altitude < LANDING_THRESHOLD_CM) &&
-        (m_current_altitude != -1.0f))
-    {
-        m_motors.stop_motors(DURATION_S_STOP_MOTOR_NORMAL);
-        m_pid_roll.reset();
-        m_pid_pitch.reset();
-        m_pid_yaw.reset();
-        change_state(DroneState::DISARMED);
         return;
     }
 
@@ -309,6 +282,21 @@ void Drone::handle_state_flying(uint32_t current_ms)
             return;
         }
 
+        m_tof.update();
+        m_current_altitude = m_tof.distance_cm();
+        logger.debug(TAG, "Altitude: %.2f cm", m_current_altitude);
+
+        if ((m_flight_receiver.target_throttle() <= (float)MotorsController::PULSE_WIDTH_US_MIN + 50.0f) &&
+            ((m_current_altitude < LANDING_THRESHOLD_CM) && (m_current_altitude != -1.0f)))
+        {
+            m_motors.stop_motors(DURATION_S_STOP_MOTOR_NORMAL);
+            m_pid_roll.reset();
+            m_pid_pitch.reset();
+            m_pid_yaw.reset();
+            change_state(DroneState::DISARMED);
+            return;
+        }
+
         // Manual flying logic
         if (m_flight_receiver.is_neutral())
         {
@@ -316,6 +304,7 @@ void Drone::handle_state_flying(uint32_t current_ms)
             float roll_measured = m_imu.roll();
             float pitch_measured = m_imu.pitch();
             float yaw_measured = m_imu.yaw();
+            logger.debug(TAG, "roll: %.2f \t| pitch: %.2f \t| yaw: %.2f", roll_measured, pitch_measured, yaw_measured);
 
             // Get pilot commands
             float throttle_input = m_flight_receiver.target_throttle();
@@ -327,12 +316,7 @@ void Drone::handle_state_flying(uint32_t current_ms)
             float roll_correction = m_pid_roll.compute(roll_measured, roll_target_rate);
             float pitch_correction = m_pid_pitch.compute(pitch_measured, pitch_target_rate);
             float yaw_correction = m_pid_yaw.compute(yaw_measured, yaw_target_rate);
-
-            // Always keep minimum idle spin speed
-            if (throttle_input < (float)MotorsController::PULSE_WIDTH_US_SPIN_IDLE)
-            {
-                throttle_input = (float)MotorsController::PULSE_WIDTH_US_SPIN_IDLE;
-            }
+            logger.debug(TAG, "PID roll: %.2f \t| PID pitch: %.2f \t| PID yaw: %.2f", roll_correction, pitch_correction, yaw_correction);
 
             // Compute and send motors inputs
             m_motors.compute_motor_inputs(throttle_input, roll_correction, pitch_correction, yaw_correction);
@@ -364,7 +348,7 @@ void Drone::handle_state_auto_landing(uint32_t current_ms)
 
     led_rgb_blink(Color::PURPLE, LED_BLINK_INTERVAL_NORMAL, current_ms);
 
-    if (!check_sensors() || m_flight_receiver.is_disarmed())
+    if (m_flight_receiver.is_disarmed() || !check_sensors())
     {
         change_state(DroneState::EMERGENCY_LANDING);
         return;

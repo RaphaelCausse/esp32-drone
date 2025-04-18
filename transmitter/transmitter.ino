@@ -60,5 +60,5 @@ void setup()
 void loop()
 {
     esp_now_send(broadcastAddress, (uint8_t *)&currentCmd, sizeof(currentCmd));
-    delay(100);
+    delay(80);
 }

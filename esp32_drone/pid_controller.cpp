@@ -28,7 +28,7 @@ float PIDController::compute(float current, float target)
         dt = 0.01f;
     }
 
-    m_integral += error * dt;
+    m_integral += (error + m_prev_error) * dt / 2;
 
     // Avoid Integral windup
     m_integral = clamp(m_integral, -INTEGRAL_WINDUP_VALUE, INTEGRAL_WINDUP_VALUE);

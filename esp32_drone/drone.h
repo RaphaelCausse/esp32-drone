@@ -76,9 +76,9 @@ public:
     static constexpr float PID_GAIN_I_PITCH = 3.5f;  // Integral gain for pitch (accumulates past pitch error)
     static constexpr float PID_GAIN_D_PITCH = 0.03f; // Derivative gain for pitch (reacts to rate of change in pitch error)
 
-    static constexpr float PID_GAIN_P_YAW = 2.0f;  // Proportional gain for yaw (reacts to current yaw error)
-    static constexpr float PID_GAIN_I_YAW = 12.0f; // Integral gain for yaw (accumulates past yaw error)
-    static constexpr float PID_GAIN_D_YAW = 0.0f;  // Derivative gain for yaw (reacts to rate of change in yaw error)
+    static constexpr float PID_GAIN_P_YAW = 2.0f; // Proportional gain for yaw (reacts to current yaw error)
+    static constexpr float PID_GAIN_I_YAW = 4.0f; // Integral gain for yaw (accumulates past yaw error)
+    static constexpr float PID_GAIN_D_YAW = 0.0f; // Derivative gain for yaw (reacts to rate of change in yaw error)
 
     static constexpr float TARGET_ALTITUDE_CM = 34.0f;
     static constexpr float LANDING_THRESHOLD_CM = 7.5f;

@@ -52,7 +52,7 @@ public:
     static constexpr uint16_t RECEIVE_VALUE_MID = 1500;
     static constexpr uint16_t RECEIVE_VALUE_MIN = 1000;
 
-    static constexpr uint16_t MAX_THROTTLE = 1800;
+    static constexpr uint16_t MAX_THROTTLE = 1600;
 
     static constexpr float COEF_ROTATION_RATE = 0.15;
 };

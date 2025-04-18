@@ -145,7 +145,7 @@ bool SensorMPU6050::read_gyro()
     m_yaw_rate = (g.gyro.z - m_yaw_calibration) * (180.0f / M_PI);
 
     // DEBUG
-    logger.debug(TAG, "Gyro (rad/s)\t| Roll: %.3f\t| Pitch: %.3f\t| Yaw: %.3f", m_roll_rate, m_pitch_rate, m_yaw_rate);
+    // logger.debug(TAG, "Gyro (rad/s)\t| Roll: %.3f\t| Pitch: %.3f\t| Yaw: %.3f", m_roll_rate, m_pitch_rate, m_yaw_rate);
     // END DEBUG
 
     return true;
@@ -168,7 +168,7 @@ bool SensorMPU6050::read_accel()
     m_accel_z = a.acceleration.z;
 
     // DEBUG
-    logger.debug(TAG, "Accel (m/s^2)\t| X: %.3f\t| Y: %.3f\t| Z: %.3f", m_accel_x, m_accel_y, m_accel_z);
+    // logger.debug(TAG, "Accel (m/s^2)\t| X: %.3f\t| Y: %.3f\t| Z: %.3f", m_accel_x, m_accel_y, m_accel_z);
     // END DEBUG
 
     return true;

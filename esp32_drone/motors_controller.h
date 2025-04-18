@@ -31,17 +31,18 @@ private:
     float m_input_motor4; // Front left motor (CW)
 
 public:
-    static constexpr uint16_t PULSE_WIDTH_US_MAX = 2000; // Maximum pulse width in microseconds
+    // static constexpr uint16_t PULSE_WIDTH_US_MAX = 2000; // Maximum pulse width in microseconds
+    static constexpr uint16_t PULSE_WIDTH_US_MAX = 1600; // Maximum pulse width in microseconds
     static constexpr uint16_t PULSE_WIDTH_US_MIN = 1000; // Minimum pulse width in microseconds
     static constexpr int PWM_FREQ = 50;                  // 50Hz standard ESC
     static constexpr int PWM_RESOLUTION = 12;            // 12-bit for microsecond precision
 
     static constexpr int DELAY_INIT_ESC = 3000; // Delay to let ESC initialize
 
-    static constexpr int PULSE_WIDTH_US_SPIN_ARMED = 1120; // Pulse to spin motor when armed at 12%
-    static constexpr int PULSE_WIDTH_US_SPIN_IDLE = 1180;  // Pulse to spin motor when idle at 18%
-    static constexpr int PULSE_WIDTH_US_SPIN_HALF = 1500;  // Pulse to spin motor at 50%
-    static constexpr int PULSE_WIDTH_US_SPIN_MAX = 1800;   // Pulse to spin motor at max 80% to give room for adjustments
+    static constexpr uint16_t PULSE_WIDTH_US_SPIN_ARMED = 1120; // Pulse to spin motor when armed at 12%
+    static constexpr uint16_t PULSE_WIDTH_US_SPIN_IDLE = 1180;  // Pulse to spin motor when idle at 18%
+    // static constexpr uint16_t PULSE_WIDTH_US_SPIN_MAX = 1800;   // Pulse to spin motor at max 80% to give room for adjustments
+    static constexpr uint16_t PULSE_WIDTH_US_SPIN_MAX = 1400; // Pulse to spin motor at max 40% to give room for adjustments
 
     // Channel assignment for ESP32
     static constexpr int MOTOR_1_ID = 1;
