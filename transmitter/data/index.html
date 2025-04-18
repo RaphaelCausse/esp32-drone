@@ -100,7 +100,10 @@
         <div id="joystick-box">
             <div class="joystick-zone" id="joystick-zone-left"> 
                 <div id="stick"></div> 
-                <div id="values">Throttle: 1000<br>Yaw: 1500</div> 
+                <div id="values">
+                    Throttle: 1000<br>
+                    Yaw (Z): 1500
+                </div> 
             </div> 
             <div class="joystick-zone" id="joystick-zone-right">
                 <div id="values-right">
@@ -122,7 +125,7 @@
             const switch_arm = document.getElementById('switch-disarmed-armed');
             const switch_mode = document.getElementById('switch-mode');
             const radius = container.offsetWidth / 2; 
-            const maxRange = radius - stick.offsetWidth / 2; 
+            const maxRange = radius - stick.offsetWidth / 2 - 30; 
             const centerX = radius; 
             const centerY = radius; 
             let isDragging = false; 
@@ -165,7 +168,7 @@
                 const normY = (newY - centerY) / maxRange;
                 left_x = clamp(Math.round(normX * 500 + MIDDLE), MIN, MAX);
                 left_y = clamp(Math.round(-normY * 500 + MIDDLE), MIN, MAX);
-                values.innerHTML = `Throttle: ${left_y}<br>Yaw: ${left_x}`; 
+                values.innerHTML = `Throttle: ${left_y}<br>Yaw (Z): ${left_x}`; 
                 sendJoystick();
             } 
             
@@ -176,7 +179,7 @@
                 // garde position vertical
 
                 left_x = MIDDLE;
-                values.innerHTML = `Throttle: ${left_y}<br>Yaw: ${left_x}`; 
+                values.innerHTML = `Throttle: ${left_y}<br>Yaw (Z): ${left_x}`; 
                 sendJoystick(); 
             } 
             

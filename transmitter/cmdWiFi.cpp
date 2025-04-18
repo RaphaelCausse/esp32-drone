@@ -58,19 +58,14 @@ void convert_msg_to_cmd(struct_message &msg_parsed, struct_command &cmd)
 
   if (strcmp(msg_parsed.disarmedArmed, "disarmed") == 0)
   {
-    cmd.pitch = MIDDLE;
-    cmd.pitch = MIDDLE;
-    cmd.throttle = MIN;
-    cmd.yaw = MIDDLE;
     cmd.switch_arm = MIN;
-    return;
   }
-  else
+  else if (strcmp(msg_parsed.disarmedArmed, "armed") == 0)
   {
     cmd.switch_arm = MAX;
   }
 
-  cmd.pitch = msg_parsed.right_x;
+  cmd.roll = msg_parsed.right_x;
   cmd.pitch = msg_parsed.right_y;
   cmd.throttle = msg_parsed.left_y;
   cmd.yaw = msg_parsed.left_x;
@@ -95,8 +90,8 @@ void cmdWiFi_init()
   Serial.println("WiFi en AP lancé");
 
   // Affiche l'adresse IP pour accéder à la page web
-  Serial.print("Connectez-vous à : http://");
-  Serial.println(WiFi.softAPIP());
+  Serial.print("Connectez-vous à : ");
+  Serial.println(WiFi.softAPSSID());
 
   // Serveur de fichiers
   server.serveStatic("/", LittleFS, "/").setDefaultFile("index.html");
@@ -106,31 +101,41 @@ void cmdWiFi_init()
             {
     if (request->hasParam("msg")) {
       String msg = request->getParam("msg")->value();
-      Serial.println("Commande reçue : " + msg);
+      // Serial.println("===== Commande reçue : " + msg + "=====");
 
       // Parser la commande
       parseMessage(msg, currentMsg);
 
-      Serial.println(String(currentMsg.left_x));
-      Serial.println(String(currentMsg.left_y));
-      Serial.println(String(currentMsg.right_x));
-      Serial.println(String(currentMsg.right_y));
-      Serial.println(currentMsg.disarmedArmed);
-      Serial.println(currentMsg.mode);
-
       //Convertion du message recu en commande a envoyer avec ESP-NOW
       convert_msg_to_cmd(currentMsg, currentCmd);
 
-      Serial.println(String(currentCmd.pitch));
-      Serial.println(String(currentCmd.pitch));
-      Serial.println(String(currentCmd.throttle));
-      Serial.println(String(currentCmd.yaw));
-      Serial.println(String(currentCmd.switch_arm));
-      Serial.println(String(currentCmd.switch_mode));
+      Serial.print("roll: ");
+      Serial.print(String(currentCmd.roll));
+      Serial.print("\t| pitch: ");
+      Serial.print(String(currentCmd.pitch));
+      Serial.print("\t| throttle: ");
+      Serial.print(String(currentCmd.throttle));
+      Serial.print("\t| yaw: ");
+      Serial.print(String(currentCmd.yaw));
+      
+      Serial.print("\t| switch_arm: ");
+      if (currentCmd.switch_arm == MIN)
+        Serial.print("disarmed");
+      else if (currentCmd.switch_arm == MAX)
+        Serial.print("armed");
 
+      Serial.print("\t| switch_mode: ");
+      if (currentCmd.switch_mode == MIN)
+        Serial.println("auto_landing");
+      else if (currentCmd.switch_mode == MIDDLE)
+        Serial.println("neutral");
+      else if (currentCmd.switch_mode == MAX)
+        Serial.println("auto_takeoff");
     }
     request->send(200, "text/plain", "OK"); });
 
   server.begin();
   Serial.println("Serveur HTTP lancé !");
+  Serial.print("Controle du drone : http://");
+  Serial.println(WiFi.softAPIP());
 }
