@@ -22,7 +22,6 @@ public:
 
 private:
     void handle_state_calibrating(uint32_t current_ms);
-    void handle_state_idle(uint32_t current_ms);
     void handle_state_disarmed(uint32_t current_ms);
     void handle_state_armed(uint32_t current_ms);
     void handle_state_auto_takeoff(uint32_t current_ms);
@@ -54,16 +53,18 @@ private:
     PIDController m_pid_pitch; // PID controller for pitch
     PIDController m_pid_yaw;   // PID controller for yaw
 
-private:
+public:
     static constexpr uint8_t DRONE_I2C_SDA = 8; // GPIO pin for I2C SDA
     static constexpr uint8_t DRONE_I2C_SCL = 9; // GPIO pin for I2C SCL
 
-    static constexpr uint16_t LED_BLINK_INTERVAL_ERROR = 500; // Blink interval in milliseconds for ERROR state
-    static constexpr uint16_t LED_BLINK_INTERVAL_AUTO = 500;  // Blink interval in milliseconds for AUTO_TAKEOFF and AUTO_LANDING states
+    static constexpr uint16_t LED_BLINK_INTERVAL_NORMAL = 500; // Normal speend for blink interval, in milliseconds
+    static constexpr uint16_t LED_BLINK_INTERVAL_FAST = 250;   // Fast blink interval, in milliseconds
 
-    static constexpr uint16_t DELAY_MS_IDLE = 500;
     static constexpr uint16_t DELAY_MS_CHECK_SENSORS = 500; // Delay in milliseconds for sensors check
     static constexpr uint16_t DELAY_MS_SEND_PWM = 20;       // Delay in milliseconds for sending PWM signals to motors
+
+    static constexpr float DURATION_S_STOP_MOTOR_NORMAL = 3.0f; // Normal duration in seconds to stop motors
+    static constexpr float DURATION_S_STOP_MOTOR_FAST = 1.0f;   // Fast duration in seconds to stop motors
 
     static constexpr float PID_GAIN_P_ROLL = 0.6f;  // Proportional gain for roll (reacts to current roll error)
     static constexpr float PID_GAIN_I_ROLL = 3.5f;  // Integral gain for roll (accumulates past roll error)

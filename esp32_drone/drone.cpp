@@ -55,12 +55,14 @@ void Drone::init()
 
     // Atfer initialization, calibration required
     change_state(DroneState::CALIBRATING);
-
 }
 
 void Drone::update()
 {
     uint32_t current_ms = millis();
+
+    // Update commands from receiver before handling state
+    m_flight_receiver.update();
 
     /*** Drone Finite State Machine ***/
 
@@ -68,10 +70,6 @@ void Drone::update()
     {
     case DroneState::CALIBRATING:
         handle_state_calibrating(current_ms);
-        break;
-
-    case DroneState::IDLE:
-        handle_state_idle(current_ms);
         break;
 
     case DroneState::DISARMED:
@@ -105,6 +103,9 @@ void Drone::update()
     default:
         break;
     }
+
+    uint32_t elapsed_ms = millis() - current_ms;
+    // logger.debug(TAG, "Loop time: %ld ms", elapsed_ms);
 }
 
 void Drone::handle_state_calibrating(uint32_t current_ms)
@@ -117,15 +118,7 @@ void Drone::handle_state_calibrating(uint32_t current_ms)
         change_state(DroneState::ERROR);
     }
 
-    change_state(DroneState::DISARMED);
-}
-
-void Drone::handle_state_idle(uint32_t current_ms)
-{
-    led_rgb_white(ON);
-
-    delay(DELAY_MS_IDLE);
-    // change_state(DroneState::DISARMED);
+    // change_state(DroneState::ARMED);
     change_state(DroneState::DISARMED);
 }
 
@@ -133,20 +126,19 @@ void Drone::handle_state_disarmed(uint32_t current_ms)
 {
     led_rgb_red(ON);
 
-    if (m_emergency_protocol_engaged)
+    // Safety enabled, stop motors
+    if (current_ms - m_last_pwm_update_ms >= DELAY_MS_SEND_PWM)
+    {
+        m_last_pwm_update_ms = current_ms;
+        m_motors.stop_motors(DURATION_S_STOP_MOTOR_FAST);
+    }
+
+    if (m_emergency_protocol_engaged || !check_sensors())
     {
         change_state(DroneState::ERROR);
         return;
     }
 
-    // Check sensors health
-    if (!check_sensors())
-    {
-        change_state(DroneState::ERROR);
-        return;
-    }
-
-    // Check for FlightReceiver switches
     if (m_flight_receiver.is_armed())
     {
         change_state(DroneState::ARMED);
@@ -155,13 +147,16 @@ void Drone::handle_state_disarmed(uint32_t current_ms)
 
 void Drone::handle_state_armed(uint32_t current_ms)
 {
-    // TODO: check sensors
-    //       update FlightReceiver
-    //       state --> AUTO_TAKEOFF when autotakeoff switch is up
-    //       state --> FLIGHT when receiving throttle commands and other
-    //       state --> ERROR if error occurs or emergency flag is up
-
     led_rgb_green(ON);
+
+    if (m_emergency_protocol_engaged || m_flight_receiver.is_disarmed())
+    {
+        m_pid_roll.reset();
+        m_pid_pitch.reset();
+        m_pid_yaw.reset();
+        change_state(DroneState::DISARMED);
+        return;
+    }
 
     if (!check_sensors())
     {
@@ -169,81 +164,162 @@ void Drone::handle_state_armed(uint32_t current_ms)
         return;
     }
 
-    // Check for FlightReceiver switches
-    if (m_flight_receiver.is_disarmed())
+    if (m_flight_receiver.is_armed())
     {
-        change_state(DroneState::DISARMED);
-    }
-    // check for switch AUTO_TAKEOFF or check for throttle inputs with NEUTRAL
+        if (m_flight_receiver.is_auto_takeoff())
+        {
+            change_state(DroneState::AUTO_TAKEOFF);
+            return;
+        }
 
-    // Spin motor when armed
-    if (current_ms - m_last_pwm_update_ms >= DELAY_MS_SEND_PWM)
-    {
-        m_last_pwm_update_ms = current_ms;
-        m_motors.spin_armed();
+        if (m_flight_receiver.is_neutral())
+        {
+            // Manual takeoff engaged
+            if (m_flight_receiver.target_throttle() > (float)MotorsController::PULSE_WIDTH_US_SPIN_ARMED)
+            {
+                change_state(DroneState::FLYING);
+            }
+        }
+
+        // Safety disabled, spin motor
+        if (current_ms - m_last_pwm_update_ms >= DELAY_MS_SEND_PWM)
+        {
+            m_last_pwm_update_ms = current_ms;
+            m_motors.spin_motors_armed();
+        }
     }
 }
 
 void Drone::handle_state_auto_takeoff(uint32_t current_ms)
 {
-    // TODO: update IMU readings
-    //       Stabilize with PID
-    //       Ascend slowly
-    //       state --> FLIGHT when reached designated altitude, in cm
-    //       state --> EMERGENCY_LANDING if error occurs
+    led_rgb_blink(Color::PURPLE, LED_BLINK_INTERVAL_NORMAL, current_ms);
 
-    led_rgb_blink(Color::PURPLE, LED_BLINK_INTERVAL_AUTO, current_ms);
+    if (!check_sensors() || m_flight_receiver.is_disarmed())
+    {
+        change_state(DroneState::EMERGENCY_LANDING);
+        return;
+    }
 
-    m_imu.update();
-    m_tof.update();
-    // stabilize_drone();
+    if (m_flight_receiver.is_armed())
+    {
+        if (m_flight_receiver.is_auto_landing())
+        {
+            change_state(DroneState::AUTO_LANDING);
+            return;
+        }
+
+        if (m_flight_receiver.is_neutral())
+        {
+            // Manual flying
+            if (m_flight_receiver.target_throttle() > (float)MotorsController::PULSE_WIDTH_US_SPIN_HALF)
+            {
+                change_state(DroneState::FLYING);
+                return;
+            }
+        }
+
+        // Auto Takeoff logic
+        if (m_flight_receiver.is_auto_takeoff())
+        {
+            m_imu.update();
+            m_tof.update();
+            // check distance, if reached altitude --> change state to FLYING
+            // Target inputs to ascend slowly
+            // Compute pid to stabilize
+            // compute and send motors inputs
+            // Always keep motors above SPIN_IDLE
+        }
+    }
 }
 
 void Drone::handle_state_flying(uint32_t current_ms)
 {
-    // TODO: update IMU readings
-    //       update FlightReceiver
-    //       Stabilize with PID
-    //       Respond to flight receiver commands with PWM for motors
-    //       state --> AUTO_LANDING when autolanding switch is up
-    //       state --> EMERGENCY_LANDING if error occurs
+    led_rgb_green(ON);
 
-    m_imu.update();
+    if (!check_sensors() || m_flight_receiver.is_disarmed())
+    {
+        change_state(DroneState::EMERGENCY_LANDING);
+        return;
+    }
+
+    if (m_flight_receiver.is_armed())
+    {
+        if (m_flight_receiver.is_auto_landing())
+        {
+            change_state(DroneState::AUTO_LANDING);
+            return;
+        }
+
+        // Manual flying logic
+        if (m_flight_receiver.is_neutral())
+        {
+            m_imu.update();
+            m_tof.update();
+            // check distance, if below minimum, drone reached ground --> change state to ARMED
+            // Target inputs
+            // Compute pid to stabilize
+            // compute and send motors inputs
+            // Always keep motors above SPIN_IDLE
+        }
+    }
 }
 
 void Drone::handle_state_auto_landing(uint32_t current_ms)
 {
-    // TODO: update IMU readings
-    //       Stabilize with PID
-    //       Descend slowly
-    //       state --> DISARMED when reached ground (threshold in cm), for safety
-
     if (m_emergency_protocol_engaged)
     {
-        led_rgb_blink(Color::YELLOW, LED_BLINK_INTERVAL_AUTO, current_ms);
-    }
-    else
-    {
-        led_rgb_blink(Color::PURPLE, LED_BLINK_INTERVAL_AUTO, current_ms);
+        led_rgb_yellow(ON);
+
+        // Emergency protocole, land without sensors, disarm
+        m_motors.stop_motors(DURATION_S_STOP_MOTOR_NORMAL);
+        m_pid_roll.reset();
+        m_pid_pitch.reset();
+        m_pid_yaw.reset();
+        change_state(DroneState::DISARMED);
+        return;
     }
 
-    m_imu.update();
-    m_tof.update();
-    // stabilize_drone();
+    led_rgb_blink(Color::PURPLE, LED_BLINK_INTERVAL_NORMAL, current_ms);
+
+    if (!check_sensors() || m_flight_receiver.is_disarmed())
+    {
+        change_state(DroneState::EMERGENCY_LANDING);
+        return;
+    }
+
+    if (m_flight_receiver.is_armed())
+    {
+        if (m_flight_receiver.is_neutral())
+        {
+            change_state(DroneState::FLYING);
+            return;
+        }
+
+        // Auto landing logic
+        if (m_flight_receiver.is_auto_landing())
+        {
+            m_imu.update();
+            m_tof.update();
+            // check distance, if below minimum, drone reached ground --> change state to ARMED
+            // Target inputs to descend slowly
+            // Compute pid to stabilize
+            // compute and send motors inputs
+        }
+    }
 }
 
 void Drone::handle_state_emergency_landing(uint32_t current_ms)
 {
     led_rgb_yellow(ON);
 
-    // Start the emergency landing protocol: AUTO_LANDING -> DISARMED -> ERROR
+    // Engage emergency landing protocol: AUTO_LANDING -> DISARMED -> ERROR
     m_emergency_protocol_engaged = true;
     change_state(DroneState::AUTO_LANDING);
 }
 
 void Drone::handle_state_error(uint32_t current_ms)
 {
-    led_rgb_blink(Color::RED, LED_BLINK_INTERVAL_ERROR, current_ms);
+    led_rgb_blink(Color::RED, LED_BLINK_INTERVAL_FAST, current_ms);
 
     // TODO: Report sensors and other components status, emergency ?
 }
@@ -281,8 +357,6 @@ const char *Drone::state_to_cstr(DroneState state)
         return "INITIALIZING";
     case DroneState::CALIBRATING:
         return "CALIBRATING";
-    case DroneState::IDLE:
-        return "IDLE";
     case DroneState::DISARMED:
         return "DISARMED";
     case DroneState::ARMED:

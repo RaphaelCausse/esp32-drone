@@ -48,7 +48,7 @@ void PIDController::reset()
     m_prev_error = 0.0f;
 }
 
-float PIDController::clamp(float value, float min, float max)
+float PIDController::clamp(float value, float min, float max) const
 {
     if (value > max)
     {

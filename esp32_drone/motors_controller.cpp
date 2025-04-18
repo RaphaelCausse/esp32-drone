@@ -52,7 +52,7 @@ bool MotorsController::setup_motor(int pin)
 
 void MotorsController::write_pwm(uint8_t motor_id, uint16_t us)
 {
-    us = constrain_us(us, MIN_PULSE_WIDTH_US, MAX_PULSE_WIDTH_US);
+    us = constrain_us(us, PULSE_WIDTH_US_MIN, PULSE_WIDTH_US_MAX);
 
     int motor_index = motor_id - 1;
     if (motor_index < 0 || motor_index >= 4)
@@ -86,53 +86,59 @@ void MotorsController::write_pwm(uint8_t motor_id, uint16_t us)
 
 void MotorsController::init_sequence_esc()
 {
-    logger.info(TAG, "Send init PWM signal to all motors (1000µs)");
-    write_pwm(MOTOR_1_ID, MIN_PULSE_WIDTH_US);
-    write_pwm(MOTOR_2_ID, MIN_PULSE_WIDTH_US);
-    write_pwm(MOTOR_3_ID, MIN_PULSE_WIDTH_US);
-    write_pwm(MOTOR_4_ID, MIN_PULSE_WIDTH_US);
+    logger.info(TAG, "Init ESC sequence, sending PWM signals (1000µs)");
+    write_pwm(MOTOR_1_ID, PULSE_WIDTH_US_MIN);
+    write_pwm(MOTOR_2_ID, PULSE_WIDTH_US_MIN);
+    write_pwm(MOTOR_3_ID, PULSE_WIDTH_US_MIN);
+    write_pwm(MOTOR_4_ID, PULSE_WIDTH_US_MIN);
     delay(DELAY_INIT_ESC);
 }
 
-void MotorsController::stop_all()
+void MotorsController::stop_motors(float duration_seconds)
 {
-    const int steps = 3;
-    const int delay_ms = 50;
+    const uint16_t update_interval_ms = 50;
+    const uint16_t total_steps = duration_seconds * 1000 / update_interval_ms;
 
-    // Progressive stop
-    for (int s = 0; s < steps; ++s)
-    {
-        for (int i = 0; i < 4; ++i)
-        {
-            uint16_t current_pwm = m_motor_last_pwm[i];
-            uint16_t delta = (current_pwm - MIN_PULSE_WIDTH_US) / (steps - s);
-            uint16_t new_pwm = current_pwm - delta;
-            if (new_pwm < MIN_PULSE_WIDTH_US)
-            {
-                new_pwm = MIN_PULSE_WIDTH_US;
-            }
-
-            write_pwm(i + 1, new_pwm);
-            m_motor_last_pwm[i] = new_pwm;
-        }
-        delay(delay_ms);
-    }
-
-    // Make sure to shutdown motors
+    // Save PWM start value of each motor
+    uint16_t start_pwm[4];
     for (int i = 0; i < 4; ++i)
     {
-        write_pwm(i + 1, MIN_PULSE_WIDTH_US);
-        m_motor_last_pwm[i] = MIN_PULSE_WIDTH_US;
+        start_pwm[i] = m_motor_last_pwm[i];
+    }
+
+    for (uint16_t step = 0; step <= total_steps; ++step)
+    {
+        float progress = static_cast<float>(step) / total_steps;
+
+        for (int i = 0; i < 4; ++i)
+        {
+            // Linear interpolation between start_pwm[i] and PULSE_WIDTH_US_MIN
+            uint16_t pwm = static_cast<uint16_t>(start_pwm[i] * (1.0f - progress) + PULSE_WIDTH_US_MIN * progress);
+            if (pwm < PULSE_WIDTH_US_MIN)
+            {
+                pwm = PULSE_WIDTH_US_MIN;
+            }
+
+            write_pwm(i + 1, pwm);
+            m_motor_last_pwm[i] = pwm;
+        }
+        delay(update_interval_ms);
+    }
+
+    // Security, force motor to stop
+    for (int i = 0; i < 4; ++i)
+    {
+        write_pwm(i + 1, PULSE_WIDTH_US_MIN);
+        m_motor_last_pwm[i] = PULSE_WIDTH_US_MIN;
     }
 }
 
-void MotorsController::spin_armed()
+void MotorsController::spin_motors_armed()
 {
-    uint16_t spin_pulse = MIN_PULSE_WIDTH_US + (MIN_PULSE_WIDTH_US * SPIN_ARMED_PERCENTAGE / 100);
-    write_pwm(MOTOR_1_ID, spin_pulse);
-    write_pwm(MOTOR_2_ID, spin_pulse);
-    write_pwm(MOTOR_3_ID, spin_pulse);
-    write_pwm(MOTOR_4_ID, spin_pulse);
+    write_pwm(MOTOR_1_ID, PULSE_WIDTH_US_SPIN_ARMED);
+    write_pwm(MOTOR_2_ID, PULSE_WIDTH_US_SPIN_ARMED);
+    write_pwm(MOTOR_3_ID, PULSE_WIDTH_US_SPIN_ARMED);
+    write_pwm(MOTOR_4_ID, PULSE_WIDTH_US_SPIN_ARMED);
 }
 
 void MotorsController::compute_motor_inputs(float input_throttle, float input_roll, float input_pitch, float input_yaw)
@@ -141,6 +147,50 @@ void MotorsController::compute_motor_inputs(float input_throttle, float input_ro
     m_input_motor2 = input_throttle - input_roll + input_pitch + input_yaw;
     m_input_motor2 = input_throttle + input_roll + input_pitch - input_yaw;
     m_input_motor2 = input_throttle + input_roll - input_pitch + input_yaw;
+
+    // Limit maximum pulse
+    if (m_input_motor1 > (float)PULSE_WIDTH_US_MAX)
+    {
+        m_input_motor1--;
+    }
+    if (m_input_motor2 > (float)PULSE_WIDTH_US_MAX)
+    {
+        m_input_motor2--;
+    }
+    if (m_input_motor3 > (float)PULSE_WIDTH_US_MAX)
+    {
+        m_input_motor3--;
+    }
+    if (m_input_motor4 > (float)PULSE_WIDTH_US_MAX)
+    {
+        m_input_motor4--;
+    }
+
+    // Ensure minimum pulse
+    if (m_input_motor1 < PULSE_WIDTH_US_MIN)
+    {
+        m_input_motor1 = (float)PULSE_WIDTH_US_MIN;
+    }
+    if (m_input_motor2 < PULSE_WIDTH_US_MIN)
+    {
+        m_input_motor2 = (float)PULSE_WIDTH_US_MIN;
+    }
+    if (m_input_motor3 < PULSE_WIDTH_US_MIN)
+    {
+        m_input_motor3 = (float)PULSE_WIDTH_US_MIN;
+    }
+    if (m_input_motor4 < PULSE_WIDTH_US_MIN)
+    {
+        m_input_motor4 = (float)PULSE_WIDTH_US_MIN;
+    }
+}
+
+void MotorsController::send_motor_inputs()
+{
+    write_pwm(MOTOR_1_ID, m_input_motor1);
+    write_pwm(MOTOR_1_ID, m_input_motor1);
+    write_pwm(MOTOR_1_ID, m_input_motor1);
+    write_pwm(MOTOR_1_ID, m_input_motor1);
 }
 
 void MotorsController::write_us_to_pin(int pin, uint16_t us)
@@ -149,7 +199,7 @@ void MotorsController::write_us_to_pin(int pin, uint16_t us)
     ledcWrite(pin, duty);
 }
 
-uint16_t MotorsController::constrain_us(uint16_t us, uint16_t min, uint16_t max)
+uint16_t MotorsController::constrain_us(uint16_t us, uint16_t min, uint16_t max) const
 {
     if (us < min)
     {

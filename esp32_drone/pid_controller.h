@@ -14,7 +14,7 @@ public:
     void reset();
 
 private:
-    float clamp(float value, float min, float max);
+    float clamp(float value, float min, float max) const;
 
 private:
     float m_kp;
@@ -24,7 +24,7 @@ private:
     float m_prev_error = 0.0f;
     uint32_t m_last_time = 0;
 
-private:
+public:
     static constexpr float INTEGRAL_WINDUP_VALUE = 400.0f;
 };
 

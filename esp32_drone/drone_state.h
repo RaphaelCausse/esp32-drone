@@ -6,9 +6,8 @@ enum class DroneState
     INITIALIZING, // Initializing sensors, receiver, motors, etc.
     CALIBRATING,  // Calibrating sensors
 
-    IDLE,     // Drone ready, does nothing
     DISARMED, // Safety enabled, motors are off, waiting to be armed
-    ARMED,    // Safety disabled, motors are ready but not spinning yet
+    ARMED,    // Safety disabled, motors are ready
 
     AUTO_TAKEOFF, // Autonomous takeoff (PID)
     FLYING,       // In-flight (PID)
