@@ -145,52 +145,22 @@ void MotorsController::compute_motor_inputs(float input_throttle, float input_ro
 {
     m_input_motor1 = input_throttle - input_roll - input_pitch - input_yaw;
     m_input_motor2 = input_throttle - input_roll + input_pitch + input_yaw;
-    m_input_motor2 = input_throttle + input_roll + input_pitch - input_yaw;
-    m_input_motor2 = input_throttle + input_roll - input_pitch + input_yaw;
+    m_input_motor3 = input_throttle + input_roll + input_pitch - input_yaw;
+    m_input_motor4 = input_throttle + input_roll - input_pitch + input_yaw;
 
-    // Limit maximum pulse
-    if (m_input_motor1 > (float)PULSE_WIDTH_US_MAX)
-    {
-        m_input_motor1--;
-    }
-    if (m_input_motor2 > (float)PULSE_WIDTH_US_MAX)
-    {
-        m_input_motor2--;
-    }
-    if (m_input_motor3 > (float)PULSE_WIDTH_US_MAX)
-    {
-        m_input_motor3--;
-    }
-    if (m_input_motor4 > (float)PULSE_WIDTH_US_MAX)
-    {
-        m_input_motor4--;
-    }
-
-    // Ensure minimum pulse
-    if (m_input_motor1 < PULSE_WIDTH_US_MIN)
-    {
-        m_input_motor1 = (float)PULSE_WIDTH_US_MIN;
-    }
-    if (m_input_motor2 < PULSE_WIDTH_US_MIN)
-    {
-        m_input_motor2 = (float)PULSE_WIDTH_US_MIN;
-    }
-    if (m_input_motor3 < PULSE_WIDTH_US_MIN)
-    {
-        m_input_motor3 = (float)PULSE_WIDTH_US_MIN;
-    }
-    if (m_input_motor4 < PULSE_WIDTH_US_MIN)
-    {
-        m_input_motor4 = (float)PULSE_WIDTH_US_MIN;
-    }
+    m_input_motor1 = constrain_us(m_input_motor1, PULSE_WIDTH_US_MIN, PULSE_WIDTH_US_MAX - 1);
+    m_input_motor2 = constrain_us(m_input_motor2, PULSE_WIDTH_US_MIN, PULSE_WIDTH_US_MAX - 1);
+    m_input_motor3 = constrain_us(m_input_motor3, PULSE_WIDTH_US_MIN, PULSE_WIDTH_US_MAX - 1);
+    m_input_motor4 = constrain_us(m_input_motor4, PULSE_WIDTH_US_MIN, PULSE_WIDTH_US_MAX - 1);
 }
 
 void MotorsController::send_motor_inputs()
 {
     write_pwm(MOTOR_1_ID, m_input_motor1);
-    write_pwm(MOTOR_1_ID, m_input_motor1);
-    write_pwm(MOTOR_1_ID, m_input_motor1);
-    write_pwm(MOTOR_1_ID, m_input_motor1);
+    write_pwm(MOTOR_2_ID, m_input_motor2);
+    write_pwm(MOTOR_3_ID, m_input_motor3);
+    write_pwm(MOTOR_4_ID, m_input_motor4);
+    logger.debug(TAG, "M1: %.2f  | M2: %.2f  | M3: %.2f  | M4: %.2f", m_input_motor1, m_input_motor2, m_input_motor3, m_input_motor4);
 }
 
 void MotorsController::write_us_to_pin(int pin, uint16_t us)

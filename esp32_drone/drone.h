@@ -29,10 +29,7 @@ private:
     void handle_state_auto_landing(uint32_t current_ms);
     void handle_state_emergency_landing(uint32_t current_ms);
     void handle_state_error(uint32_t current_ms);
-
     bool check_sensors();
-    void stabilize_drone();
-
     const char *state_to_cstr(DroneState state);
     void change_state(DroneState new_state);
 
@@ -53,9 +50,14 @@ private:
     PIDController m_pid_pitch; // PID controller for pitch
     PIDController m_pid_yaw;   // PID controller for yaw
 
+    float m_current_throttle;
+    float m_current_altitude;
+
 public:
     static constexpr uint8_t DRONE_I2C_SDA = 8; // GPIO pin for I2C SDA
     static constexpr uint8_t DRONE_I2C_SCL = 9; // GPIO pin for I2C SCL
+
+    static constexpr uint32_t LOOP_DURATION_MS = 50;
 
     static constexpr uint16_t LED_BLINK_INTERVAL_NORMAL = 500; // Normal speend for blink interval, in milliseconds
     static constexpr uint16_t LED_BLINK_INTERVAL_FAST = 250;   // Fast blink interval, in milliseconds
@@ -77,6 +79,12 @@ public:
     static constexpr float PID_GAIN_P_YAW = 2.0f;  // Proportional gain for yaw (reacts to current yaw error)
     static constexpr float PID_GAIN_I_YAW = 12.0f; // Integral gain for yaw (accumulates past yaw error)
     static constexpr float PID_GAIN_D_YAW = 0.0f;  // Derivative gain for yaw (reacts to rate of change in yaw error)
+
+    static constexpr float TARGET_ALTITUDE_CM = 34.0f;
+    static constexpr float LANDING_THRESHOLD_CM = 7.5f;
+
+    static constexpr float RATE_PWM_US_CLIMB = 5.0f;
+    static constexpr float RATE_PWM_US_DESCEND = 5.0f;
 };
 
 #endif /* ESP32_DRONE_DRONE_H */

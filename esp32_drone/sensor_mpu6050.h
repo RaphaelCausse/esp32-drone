@@ -30,11 +30,11 @@ private:
     SensorState m_state;
     Adafruit_MPU6050 m_mpu6050;
 
-    float m_roll_rate;         // Roll rate, around X axis (rad/s)
+    float m_roll_rate;         // Roll rate, around X axis (°/s)
     float m_roll_calibration;  // Roll rate calibration value
-    float m_pitch_rate;        // Pitch rate, around Y axis (rad/s)
+    float m_pitch_rate;        // Pitch rate, around Y axis (°/s)
     float m_pitch_calibration; // Pitch rate calibration value
-    float m_yaw_rate;          // Yaw rate, around Z axis (rad/s)
+    float m_yaw_rate;          // Yaw rate, around Z axis (°/s)
     float m_yaw_calibration;   // Yaw rate calibration value
 
     float m_accel_x; // Acceleration on X axis (m/s^2)

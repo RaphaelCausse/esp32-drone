@@ -41,6 +41,7 @@ public:
     static constexpr int PULSE_WIDTH_US_SPIN_ARMED = 1120; // Pulse to spin motor when armed at 12%
     static constexpr int PULSE_WIDTH_US_SPIN_IDLE = 1180;  // Pulse to spin motor when idle at 18%
     static constexpr int PULSE_WIDTH_US_SPIN_HALF = 1500;  // Pulse to spin motor at 50%
+    static constexpr int PULSE_WIDTH_US_SPIN_MAX = 1800;   // Pulse to spin motor at max 80% to give room for adjustments
 
     // Channel assignment for ESP32
     static constexpr int MOTOR_1_ID = 1;

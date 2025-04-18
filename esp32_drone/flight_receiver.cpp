@@ -47,7 +47,7 @@ void FlightReceiver::update()
 
 float FlightReceiver::target_throttle() const
 {
-    return clamp(cmd.throttle, RECEIVE_VALUE_MIN, RECEIVE_VALUE_MAX - 200);
+    return clamp(cmd.throttle, RECEIVE_VALUE_MIN, MAX_THROTTLE);
 }
 
 float FlightReceiver::target_roll_rate() const
