@@ -1,22 +1,15 @@
-#include "mpu6050.h"
-#include "vl53l0x.h"
+#include "drone.h"
+#include "logger.h"
 
-#define LED LED_BUILTIN
+Drone drone;
 
 void setup()
 {
-  Serial.begin(115200);
-
-  mpu6050_init();
-  vl53l0x_init();
-  
-  pinMode(LED, OUTPUT);
+    logger.begin();
+    drone.init();
 }
 
 void loop()
 {
-  digitalWrite(LED, LOW);
-  delay(500);
-  digitalWrite(LED, HIGH);
-  delay(500);
+    drone.update();
 }
